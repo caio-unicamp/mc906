@@ -14,9 +14,9 @@ try:
 		valid_moves,
 	)
 except ImportError:
-	from border_control_heuristic import corner_heuristic
-	from mobility_heuristic import mobility_heuristic
-	from othello_core import (
+	from src.border_control_heuristic import corner_heuristic
+	from src.mobility_heuristic import mobility_heuristic
+	from src.othello_core import (
 		BLACK,
 		WHITE,
 		is_terminal,

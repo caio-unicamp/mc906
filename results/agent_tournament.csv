@@ -1,0 +1,6 @@
+game_id,repetition,black_agent,white_agent,winner,black_score,white_score,disc_diff,moves,duration_sec
+1,1,minimax+mobility,minimax+mobility,black,36,28,8,60,32.5378
+2,2,minimax+mobility,minimax+mobility,black,36,28,8,60,32.5301
+3,3,minimax+mobility,minimax+mobility,black,36,28,8,60,32.543
+4,4,minimax+mobility,minimax+mobility,black,36,28,8,60,32.55
+5,5,minimax+mobility,minimax+mobility,white,4,8,-4,8,4.6504

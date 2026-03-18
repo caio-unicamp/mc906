@@ -29,11 +29,11 @@ try:
 	)
 except ImportError:
 	from src.alpha_beta_pruning_strategy import alphabeta_timed_decision
-	from border_control_heuristic import corner_heuristic
-	from frontier_heuristic import frontier_heuristic
+	from src.border_control_heuristic import corner_heuristic
+	from src.frontier_heuristic import frontier_heuristic
 	from src.minimax_strategy import minimax_timed_decision
-	from mobility_heuristic import mobility_heuristic
-	from othello_core import (
+	from src.mobility_heuristic import mobility_heuristic
+	from src.othello_core import (
 		BLACK,
 		BOARD_SIZE,
 		EMPTY,

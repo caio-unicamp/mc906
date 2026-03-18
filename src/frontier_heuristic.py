@@ -1,6 +1,17 @@
 from typing import List
 
-from .othello_core import BOARD_SIZE, EMPTY, DIRECTIONS, in_bounds
+BOARD_SIZE = 8
+EMPTY = 0
+
+DIRECTIONS = [
+	(-1, -1), (-1, 0), (-1, 1),
+	(0, -1),           (0, 1),
+	(1, -1),  (1, 0),  (1, 1),
+]
+
+
+def _in_bounds(r: int, c: int) -> bool:
+	return 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE
 
 
 def frontier_disks(board: List[List[int]], player: int) -> int:
@@ -12,7 +23,7 @@ def frontier_disks(board: List[List[int]], player: int) -> int:
 				continue
 			for di, dj in DIRECTIONS:
 				ni, nj = i + di, j + dj
-				if in_bounds(ni, nj) and board[ni][nj] == EMPTY:
+				if _in_bounds(ni, nj) and board[ni][nj] == EMPTY:
 					frontier += 1
 					break
 	return frontier
