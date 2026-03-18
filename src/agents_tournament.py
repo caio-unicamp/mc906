@@ -17,6 +17,7 @@ try:
 	from .frontier_heuristic import frontier_heuristic
 	from .minimax_strategy import minimax_timed_decision
 	from .mobility_heuristic import mobility_heuristic
+	from .random_strategy import random_timed_decision
 	from .othello_core import (
 		BLACK,
 		BOARD_SIZE,
@@ -33,6 +34,7 @@ except ImportError:
 	from src.frontier_heuristic import frontier_heuristic
 	from src.minimax_strategy import minimax_timed_decision
 	from src.mobility_heuristic import mobility_heuristic
+	from src.random_strategy import random_timed_decision
 	from src.othello_core import (
 		BLACK,
 		BOARD_SIZE,
@@ -75,6 +77,8 @@ class AgentSpec:
 
 	@property
 	def name(self) -> str:
+		if not self.heuristic_name:
+			return self.strategy_name
 		return f"{self.strategy_name}+{self.heuristic_name}"
 
 
@@ -165,8 +169,24 @@ def _alphabeta_policy(board: Board, player: int, time_limit_sec: float, max_dept
 	)
 
 
+def _random_policy(board: Board, player: int, time_limit_sec: float, max_depth: int, heuristic: HeuristicFn) -> Optional[Move]:
+	return random_timed_decision(
+		board,
+		player,
+		time_limit_sec=time_limit_sec,
+		max_depth=max_depth,
+		heuristic=heuristic,
+	)
+
+
+def _noop_heuristic(board: Board, player: int) -> float:
+	_ = board
+	_ = player
+	return 0.0
+
+
 def build_agents() -> List[AgentSpec]:
-	strategies: Dict[str, PolicyFn] = {
+	search_strategies: Dict[str, PolicyFn] = {
 		"minimax": _minimax_policy,
 		"alphabeta": _alphabeta_policy,
 	}
@@ -177,7 +197,7 @@ def build_agents() -> List[AgentSpec]:
 	}
 
 	agents: List[AgentSpec] = []
-	for strategy_name, policy in strategies.items():
+	for strategy_name, policy in search_strategies.items():
 		for heuristic_name, heuristic in heuristics.items():
 			agents.append(
 				AgentSpec(
@@ -187,6 +207,15 @@ def build_agents() -> List[AgentSpec]:
 					heuristic=heuristic,
 				)
 			)
+
+	agents.append(
+		AgentSpec(
+			strategy_name="random",
+			heuristic_name="",
+			policy=_random_policy,
+			heuristic=_noop_heuristic,
+		)
+	)
 	return agents
 
 
@@ -353,11 +382,9 @@ def write_csv(rows: List[dict], output_path: str) -> None:
 		"black_score",
 		"white_score",
 		"disc_diff",
-		"moves",
-		"duration_sec",
 	]
 	with open(output_path, "w", newline="", encoding="utf-8") as csv_file:
-		writer = csv.DictWriter(csv_file, fieldnames=fields)
+		writer = csv.DictWriter(csv_file, fieldnames=fields, extrasaction="ignore")
 		writer.writeheader()
 		writer.writerows(rows)
 
@@ -365,7 +392,7 @@ def write_csv(rows: List[dict], output_path: str) -> None:
 def parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description="Run Othello agent tournament and export CSV results.")
 	parser.add_argument("--repetitions", type=int, default=3, help="How many games per ordered matchup.")
-	parser.add_argument("--time-limit", type=float, default=0.5, help="Time budget in seconds per move.")
+	parser.add_argument("--time-limit", type=float, default=0.1, help="Time budget in seconds per move.")
 	parser.add_argument("--max-depth", type=int, default=64, help="Maximum iterative deepening depth.")
 	parser.add_argument("--output", type=str, default="results/agent_tournament.csv", help="CSV output path.")
 	parser.add_argument("--show-games", action="store_true", help="Render tournament games with Pygame.")

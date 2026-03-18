@@ -180,6 +180,21 @@ uv run -m src.agents_tournament --repetitions 3 --time-limit 0.5 --max-depth 64 
 uv run -m src.agents_tournament --show-games --move-delay-ms 80 --repetitions 1 --time-limit 0.5 --output results/agent_tournament.csv
 ```
 
+### 5) Gerar gráficos analíticos do CSV do torneio
+
+```bash
+uv run -m src.tournament_analytics_plots --input results/agent_tournament.csv --output-dir plots
+```
+
+Arquivos gerados em `plots/`:
+- `agent_win_rate.png`
+- `agent_avg_disc_diff.png`
+- `strategy_win_rate.png`
+- `heuristic_win_rate.png`
+- `head_to_head_heatmap.png`
+- `game_duration_histogram.png`
+- `summary.txt`
+
 ---
 
 ## Observações

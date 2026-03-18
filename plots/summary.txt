@@ -1,0 +1,11 @@
+games=1568
+winner_counts={'white': 924, 'black': 603, 'draw': 41}
+
+agent_stats
+alphabeta+corner: games=448 wins=285 draws=0 losses=163 win_rate=0.636 avg_disc_diff=12.44 avg_duration=N/A
+alphabeta+frontier: games=448 wins=177 draws=1 losses=270 win_rate=0.395 avg_disc_diff=-14.27 avg_duration=N/A
+alphabeta+mobility: games=448 wins=258 draws=34 losses=156 win_rate=0.576 avg_disc_diff=6.44 avg_duration=N/A
+minimax+corner: games=448 wins=282 draws=32 losses=134 win_rate=0.629 avg_disc_diff=11.27 avg_duration=N/A
+minimax+frontier: games=448 wins=199 draws=5 losses=244 win_rate=0.444 avg_disc_diff=0.44 avg_duration=N/A
+minimax+mobility: games=448 wins=237 draws=1 losses=210 win_rate=0.529 avg_disc_diff=0.48 avg_duration=N/A
+random: games=448 wins=89 draws=9 losses=350 win_rate=0.199 avg_disc_diff=-16.80 avg_duration=N/A
