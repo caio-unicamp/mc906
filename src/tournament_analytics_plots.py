@@ -24,6 +24,9 @@ def build_agent_stats(rows: List[dict]) -> Dict[str, dict]:
             "losses": 0,
             "disc_diffs": [],
             "durations": [],
+            "avg_nodes": [],
+            "avg_depth": [],
+            "avg_time": [],
         }
     )
 
@@ -35,12 +38,23 @@ def build_agent_stats(rows: List[dict]) -> Dict[str, dict]:
         duration_raw = r.get("duration_sec")
         duration = float(duration_raw) if duration_raw not in (None, "") else None
 
+        b_nodes = float(r["black_avg_nodes"]) if r.get("black_avg_nodes") not in (None, "") else None
+        w_nodes = float(r["white_avg_nodes"]) if r.get("white_avg_nodes") not in (None, "") else None
+        b_depth = float(r["black_avg_depth"]) if r.get("black_avg_depth") not in (None, "") else None
+        w_depth = float(r["white_avg_depth"]) if r.get("white_avg_depth") not in (None, "") else None
+        b_time = float(r["black_avg_time"]) if r.get("black_avg_time") not in (None, "") else None
+        w_time = float(r["white_avg_time"]) if r.get("white_avg_time") not in (None, "") else None
+
         # black perspective
         b = stats[black]
         b["games"] += 1
         b["disc_diffs"].append(diff)
         if duration is not None:
             b["durations"].append(duration)
+        if b_nodes is not None: b["avg_nodes"].append(b_nodes)
+        if b_depth is not None: b["avg_depth"].append(b_depth)
+        if b_time is not None: b["avg_time"].append(b_time)
+
         if winner == "black":
             b["wins"] += 1
         elif winner == "draw":
@@ -54,6 +68,10 @@ def build_agent_stats(rows: List[dict]) -> Dict[str, dict]:
         w["disc_diffs"].append(-diff)
         if duration is not None:
             w["durations"].append(duration)
+        if w_nodes is not None: w["avg_nodes"].append(w_nodes)
+        if w_depth is not None: w["avg_depth"].append(w_depth)
+        if w_time is not None: w["avg_time"].append(w_time)
+
         if winner == "white":
             w["wins"] += 1
         elif winner == "draw":
@@ -211,10 +229,17 @@ def write_summary_txt(rows: List[dict], agent_stats: Dict[str, dict], output_dir
             s = agent_stats[a]
             win_rate = s["wins"] / s["games"] if s["games"] else 0.0
             avg_duration = mean(s["durations"]) if s["durations"] else None
+            avg_nodes = mean(s["avg_nodes"]) if s["avg_nodes"] else None
+            avg_depth = mean(s["avg_depth"]) if s["avg_depth"] else None
+            avg_time = mean(s["avg_time"]) if s["avg_time"] else None
+            
             f.write(
                 f"{a}: games={s['games']} wins={s['wins']} draws={s['draws']} losses={s['losses']} "
                 f"win_rate={win_rate:.3f} avg_disc_diff={mean(s['disc_diffs']):.2f} "
-                f"avg_duration={(f'{avg_duration:.3f}' if avg_duration is not None else 'N/A')}\n"
+                f"avg_duration={(f'{avg_duration:.3f}' if avg_duration is not None else 'N/A')} "
+                f"avg_nodes={(f'{avg_nodes:.2f}' if avg_nodes is not None else 'N/A')} "
+                f"avg_depth={(f'{avg_depth:.2f}' if avg_depth is not None else 'N/A')} "
+                f"avg_time={(f'{avg_time:.5f}' if avg_time is not None else 'N/A')}\n"
             )
 
 

@@ -70,14 +70,14 @@ def alphabeta_decision(
 	depth: int = 6,
 	heuristic: HeuristicFn = mobility_heuristic,
 	quick_order_heuristic: HeuristicFn = corner_heuristic,
-) -> Optional[Move]:
+) -> Tuple[Optional[Move], SearchStats]:
 	stats = SearchStats()
 	start = time.monotonic()
 	moves = valid_moves(board, player)
 	if not moves:
 		stats.elapsed_sec = time.monotonic() - start
 		_print_stats("alphabeta", player, depth, stats)
-		return None
+		return None, stats
 
 	best_value = float("-inf")
 	best_move: Optional[Move] = None
@@ -105,7 +105,7 @@ def alphabeta_decision(
 
 	stats.elapsed_sec = time.monotonic() - start
 	_print_stats("alphabeta", player, depth, stats)
-	return best_move
+	return best_move, stats
 
 
 def _alphabeta(
@@ -209,7 +209,7 @@ def alphabeta_timed_decision(
 	max_depth: int = 64,
 	heuristic: HeuristicFn = mobility_heuristic,
 	quick_order_heuristic: HeuristicFn = corner_heuristic,
-) -> Optional[Move]:
+) -> Tuple[Optional[Move], SearchStats]:
 	stats = SearchStats()
 	start = time.monotonic()
 	deadline = time.monotonic() + time_limit_sec
@@ -217,7 +217,7 @@ def alphabeta_timed_decision(
 	if not legal:
 		stats.elapsed_sec = time.monotonic() - start
 		_print_stats("alphabeta-timed", player, 0, stats)
-		return None
+		return None, stats
 
 	best_move: Optional[Move] = next(iter(legal))
 
@@ -241,7 +241,7 @@ def alphabeta_timed_decision(
 
 	stats.elapsed_sec = time.monotonic() - start
 	_print_stats("alphabeta-timed", player, max_depth, stats)
-	return best_move
+	return best_move, stats
 
 
 def _alphabeta_decision_with_deadline(

@@ -1,5 +1,5 @@
 import random
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 try:
 	from .othello_core import valid_moves
@@ -16,14 +16,14 @@ def random_decision(
 	player: int,
 	depth: int = 0,
 	heuristic: Optional[HeuristicFn] = None,
-) -> Optional[Move]:
+) -> Tuple[Optional[Move], Any]:
 	"""Naive policy: choose a uniformly random legal move."""
 	_ = depth
 	_ = heuristic
 	legal = list(valid_moves(board, player))
 	if not legal:
-		return None
-	return random.choice(legal)
+		return None, None
+	return random.choice(legal), None
 
 
 def random_timed_decision(
@@ -32,7 +32,7 @@ def random_timed_decision(
 	time_limit_sec: float = 0.0,
 	max_depth: int = 0,
 	heuristic: Optional[HeuristicFn] = None,
-) -> Optional[Move]:
+) -> Tuple[Optional[Move], Any]:
 	"""Time/depth-compatible wrapper used by tournament agents."""
 	_ = time_limit_sec
 	return random_decision(board, player, depth=max_depth, heuristic=heuristic)

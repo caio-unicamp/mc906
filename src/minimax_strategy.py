@@ -70,14 +70,14 @@ def minimax_decision(
 	depth: int = 4,
 	heuristic: HeuristicFn = mobility_heuristic,
 	quick_order_heuristic: HeuristicFn = corner_heuristic,
-) -> Optional[Move]:
+) -> Tuple[Optional[Move], SearchStats]:
 	stats = SearchStats()
 	start = time.monotonic()
 	moves = valid_moves(board, player)
 	if not moves:
 		stats.elapsed_sec = time.monotonic() - start
 		_print_stats("minimax", player, depth, stats)
-		return None
+		return None, stats
 
 	best_move: Optional[Move] = None
 	best_value = float("-inf")
@@ -100,7 +100,7 @@ def minimax_decision(
 
 	stats.elapsed_sec = time.monotonic() - start
 	_print_stats("minimax", player, depth, stats)
-	return best_move
+	return best_move, stats
 
 
 def _minimax(
@@ -191,7 +191,7 @@ def minimax_timed_decision(
 	max_depth: int = 64,
 	heuristic: HeuristicFn = mobility_heuristic,
 	quick_order_heuristic: HeuristicFn = corner_heuristic,
-) -> Optional[Move]:
+) -> Tuple[Optional[Move], SearchStats]:
 	stats = SearchStats()
 	start = time.monotonic()
 	deadline = time.monotonic() + time_limit_sec
@@ -199,7 +199,7 @@ def minimax_timed_decision(
 	if not legal:
 		stats.elapsed_sec = time.monotonic() - start
 		_print_stats("minimax-timed", player, 0, stats)
-		return None
+		return None, stats
 
 	# Safe fallback in case timeout happens before finishing depth 1.
 	best_move: Optional[Move] = next(iter(legal))
@@ -224,7 +224,7 @@ def minimax_timed_decision(
 
 	stats.elapsed_sec = time.monotonic() - start
 	_print_stats("minimax-timed", player, max_depth, stats)
-	return best_move
+	return best_move, stats
 
 
 def _minimax_decision_with_deadline(

@@ -65,7 +65,7 @@ WIN_COLOR = (120, 220, 140)
 Board = List[List[int]]
 Move = Tuple[int, int]
 HeuristicFn = Callable[[Board, int], float]
-PolicyFn = Callable[[Board, int, float, int, HeuristicFn], Optional[Move]]
+PolicyFn = Callable[[Board, int, float, int, HeuristicFn], Tuple[Optional[Move], Any]]
 
 
 @dataclass(frozen=True)
@@ -149,7 +149,7 @@ def _pump_events(renderer: PygameRenderer) -> None:
 			renderer.running = False
 
 
-def _minimax_policy(board: Board, player: int, time_limit_sec: float, max_depth: int, heuristic: HeuristicFn) -> Optional[Move]:
+def _minimax_policy(board: Board, player: int, time_limit_sec: float, max_depth: int, heuristic: HeuristicFn) -> Tuple[Optional[Move], Any]:
 	return minimax_timed_decision(
 		board,
 		player,
@@ -159,7 +159,7 @@ def _minimax_policy(board: Board, player: int, time_limit_sec: float, max_depth:
 	)
 
 
-def _alphabeta_policy(board: Board, player: int, time_limit_sec: float, max_depth: int, heuristic: HeuristicFn) -> Optional[Move]:
+def _alphabeta_policy(board: Board, player: int, time_limit_sec: float, max_depth: int, heuristic: HeuristicFn) -> Tuple[Optional[Move], Any]:
 	return alphabeta_timed_decision(
 		board,
 		player,
@@ -169,7 +169,7 @@ def _alphabeta_policy(board: Board, player: int, time_limit_sec: float, max_dept
 	)
 
 
-def _random_policy(board: Board, player: int, time_limit_sec: float, max_depth: int, heuristic: HeuristicFn) -> Optional[Move]:
+def _random_policy(board: Board, player: int, time_limit_sec: float, max_depth: int, heuristic: HeuristicFn) -> Tuple[Optional[Move], Any]:
 	return random_timed_decision(
 		board,
 		player,
@@ -229,6 +229,16 @@ def play_match(
 ) -> dict:
 	game = OthelloGame()
 	move_count = 0
+
+	black_nodes_sum = 0
+	white_nodes_sum = 0
+	black_depth_sum = 0
+	white_depth_sum = 0
+	black_time_sum = 0.0
+	white_time_sum = 0.0
+	black_moves = 0
+	white_moves = 0
+
 	start = time.monotonic()
 
 	if renderer is not None:
@@ -268,9 +278,21 @@ def play_match(
 			continue
 
 		agent = black_agent if player == BLACK else white_agent
-		move = agent.policy(game.board, player, time_limit_sec, max_depth, agent.heuristic)
+		move, stats = agent.policy(game.board, player, time_limit_sec, max_depth, agent.heuristic)
 		if move not in legal:
 			move = next(iter(legal))
+
+		if stats is not None:
+			if player == BLACK:
+				black_nodes_sum += stats.nodes_expanded
+				black_depth_sum += stats.max_depth_reached
+				black_time_sum += stats.elapsed_sec
+				black_moves += 1
+			else:
+				white_nodes_sum += stats.nodes_expanded
+				white_depth_sum += stats.max_depth_reached
+				white_time_sum += stats.elapsed_sec
+				white_moves += 1
 
 		game.play_move(move[0], move[1])
 		move_count += 1
@@ -307,6 +329,12 @@ def play_match(
 		"disc_diff": black_score - white_score,
 		"moves": move_count,
 		"duration_sec": round(duration_sec, 4),
+		"black_avg_nodes": round(black_nodes_sum / max(1, black_moves), 2),
+		"white_avg_nodes": round(white_nodes_sum / max(1, white_moves), 2),
+		"black_avg_depth": round(black_depth_sum / max(1, black_moves), 2),
+		"white_avg_depth": round(white_depth_sum / max(1, white_moves), 2),
+		"black_avg_time": round(black_time_sum / max(1, black_moves), 5),
+		"white_avg_time": round(white_time_sum / max(1, white_moves), 5),
 	}
 
 
@@ -382,6 +410,12 @@ def write_csv(rows: List[dict], output_path: str) -> None:
 		"black_score",
 		"white_score",
 		"disc_diff",
+		"black_avg_nodes",
+		"white_avg_nodes",
+		"black_avg_depth",
+		"white_avg_depth",
+		"black_avg_time",
+		"white_avg_time",
 	]
 	with open(output_path, "w", newline="", encoding="utf-8") as csv_file:
 		writer = csv.DictWriter(csv_file, fieldnames=fields, extrasaction="ignore")
