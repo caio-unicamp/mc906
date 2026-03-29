@@ -1,0 +1,4 @@
+game_id,repetition,black_agent,white_agent,winner,black_score,white_score,disc_diff
+1,1,minimax+mobility,minimax+mobility,white,23,41,-18
+2,1,minimax+mobility,minimax+corner,white,23,41,-18
+3,1,minimax+mobility,minimax+frontier,black,17,15,2
