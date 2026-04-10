@@ -1,0 +1,12 @@
+game_id,repetition,black_agent,white_agent,winner,black_score,white_score,disc_diff,black_avg_nodes,white_avg_nodes,black_avg_depth,white_avg_depth,black_avg_time,white_avg_time
+1,1,minimax+mobility,minimax+mobility,white,18,46,-28,4673.27,4533.2,4.5,4.47,0.47105,0.4588
+2,1,minimax+mobility,minimax+corner,white,31,33,-2,4083.13,17236.87,4.6,5.5,0.47144,0.46199
+3,1,minimax+mobility,minimax+frontier,black,37,27,10,4460.77,10165.57,4.73,4.8,0.47027,0.46758
+4,1,minimax+mobility,alphabeta+mobility,white,7,57,-50,4563.0,4197.33,4.83,5.63,0.46898,0.45725
+5,1,minimax+mobility,alphabeta+corner,white,15,49,-34,4438.8,7783.63,4.7,7.23,0.46988,0.45433
+6,1,minimax+mobility,alphabeta+frontier,black,57,7,50,4743.06,6719.14,4.68,6.14,0.46498,0.47025
+7,1,minimax+mobility,random,black,43,21,22,4665.94,0.0,4.29,0.0,0.46878,0.0
+8,1,minimax+corner,minimax+mobility,black,56,8,48,17813.0,4243.67,5.57,4.6,0.4606,0.45401
+9,1,minimax+corner,minimax+corner,draw,32,32,0,18640.97,18724.5,5.23,5.2,0.4709,0.46803
+10,1,minimax+corner,minimax+frontier,black,50,14,36,16620.0,9523.9,5.58,5.0,0.45469,0.48202
+11,1,minimax+corner,alphabeta+mobility,black,19,13,6,15301.29,2425.57,4.93,4.93,0.50019,0.50016
