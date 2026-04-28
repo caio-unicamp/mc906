@@ -6,5 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.9.0",
+    "pandas>=3.0.2",
     "pygame>=2.6.1",
+    "seaborn>=0.13.2",
 ]
