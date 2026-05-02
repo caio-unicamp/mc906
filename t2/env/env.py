@@ -35,7 +35,7 @@ class StockMarketEnv():
         elif action == -1 and self.position == 1:  # Sell
             self.position = 0
             transaction = True
-        transaction_cost = 0.01 if transaction else 0
+        transaction_cost = 0.0003 if transaction else 0
 
         reward = self._log_returns[self.current_step - 1] * self.position - transaction_cost
         done = self.current_step >= self.episode_len - 1

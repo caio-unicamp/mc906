@@ -18,7 +18,7 @@ class QLearningAgent:
         epsilon_start=1.0,
         epsilon_min=0.05,
         epsilon_decay_type="constant",     # "constant" | "linear" | "exponential"
-        epsilon_linear_decay_steps=3500,
+        epsilon_linear_decay_steps=3000,
         epsilon_exp_decay_rate=0.9991,
         seed=42,
     ):
