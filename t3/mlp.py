@@ -3,7 +3,7 @@ import numpy as np
 
 class MLP:
 
-    def __init__(self, layer_sizes, learning_rate=0.01, batch_size=32, seed=None):
+    def __init__(self, layer_sizes, learning_rate=0.01, batch_size=32, seed=None, momentum=0.0):
         if seed is not None:
             np.random.seed(seed)
 
@@ -11,6 +11,7 @@ class MLP:
         self.L = len(layer_sizes) - 1
         self.lr = learning_rate
         self.batch_size = batch_size
+        self.momentum = momentum
 
         self._init_weights()
 
@@ -22,10 +23,14 @@ class MLP:
     def _init_weights(self):
         self.W = []
         self.b = []
+        self.vW = []
+        self.vb = []
         for i in range(self.L):
             std = np.sqrt(2.0 / self.layer_sizes[i])
             self.W.append(np.random.randn(self.layer_sizes[i], self.layer_sizes[i + 1]) * std)
             self.b.append(np.zeros((1, self.layer_sizes[i + 1])))
+            self.vW.append(np.zeros_like(self.W[-1]))
+            self.vb.append(np.zeros_like(self.b[-1]))
 
     def _relu(self, Z):
         return np.maximum(0, Z)
@@ -82,8 +87,10 @@ class MLP:
 
     def _update(self, dW, db):
         for l in range(self.L):
-            self.W[l] -= self.lr * dW[l]
-            self.b[l] -= self.lr * db[l]
+            self.vW[l] = self.momentum * self.vW[l] - self.lr * dW[l]
+            self.vb[l] = self.momentum * self.vb[l] - self.lr * db[l]
+            self.W[l] += self.vW[l]
+            self.b[l] += self.vb[l]
 
     def train(self, X_train, y_train, X_val=None, y_val=None, epochs=100, verbose=True):
         N = X_train.shape[0]

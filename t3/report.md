@@ -104,6 +104,19 @@ Conclusão: batch size 32 oferece o melhor custo-benefício.
 
 Conclusão: duas camadas escondidas são superiores a uma, mas o ganho de adicionar mais neurônios (128+64 vs 64+32) é marginal para este dataset. A arquitetura `[30, 64, 32, 2]` oferece o melhor equilíbrio entre performance e complexidade.
 
+### 3.6 Impacto do Momentum
+
+O momentum (β) adiciona um termo de inércia à atualização dos pesos, acumulando uma média móvel exponencial dos gradientes passados:
+
+$$v^{(l)} \leftarrow \beta \cdot v^{(l)} - \alpha \cdot \frac{\partial L}{\partial W^{(l)}}, \quad W^{(l)} \leftarrow W^{(l)} + v^{(l)}$$
+
+| β    | Acurácia (Teste) | Comportamento |
+|------|-------------------|---------------|
+| 0,0  | 0,9825            | Gradiente descendente padrão. Convergência estável. |
+| 0,9  | 0,9561            | Momentum causa overshooting com α=0,01; o passo efetivo (~α/(1−β) ≈ 0,1) é elevado demais. |
+
+Com α=0,01 e β=0,9, o momentum produz um passo efetivo muito grande, causando oscilações e acurácia inferior. Isso ilustra uma característica importante do momentum: ele exige ajuste conjunto de α e β. Para obter benefício com β=0,9, seria necessário reduzir α para ~0,001, o que efetivamente aceleraria a convergência em relação ao GD padrão com α=0,001.
+
 ---
 
 ## 4. Análise de Interpretabilidade
@@ -183,7 +196,8 @@ Ao zerar as features em ordem decrescente de importância (segundo a ablação),
 
 ### 5.3 Extras Implementados
 
-- **Inicialização He:** adotada como padrão na classe MLP.
+- **Inicialização He:** adotada como padrão na classe MLP. Pesos inicializados com $W \sim \mathcal{N}(0, \sqrt{2 / \text{fan\_in}})$, apropriada para ReLU.
+- **Momentum:** implementado com parâmetro β configurável. O experimento com α=0,01 e β=0,9 mostrou que o momentum amplifica o passo efetivo (~10×), exigindo redução conjunta de α para obter aceleração sem overshooting.
 - **Técnicas adicionais de interpretabilidade:** além dos gradientes (exigidos), foram implementadas perturbação e ablação.
 - **Comparação entre técnicas:** ranking consolidado, heatmap de consenso e análise de correlação entre os rankings.
 
