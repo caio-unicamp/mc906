@@ -1,0 +1,21 @@
+[project]
+name = "home-credit-default-risk"
+version = "0.1.0"
+description = "TP4 - Kaggle Classification: Home Credit Default Risk | MO443 Intro to AI"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "matplotlib",
+    "seaborn",
+    "shap",
+    "torch",
+    "kagglehub",
+    "openpyxl",
+    "imbalanced-learn",
+    "optuna",
+]

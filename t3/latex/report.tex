@@ -1,0 +1,170 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+
+\geometry{top=1.8cm, bottom=1.8cm, left=2cm, right=2cm}
+\setlength{\parskip}{2pt}
+\setlength{\parindent}{0pt}
+\setlength{\abovecaptionskip}{4pt}
+\setlength{\belowcaptionskip}{2pt}
+\titlespacing{\section}{0pt}{8pt}{4pt}
+\titlespacing{\subsection}{0pt}{6pt}{2pt}
+
+\renewcommand{\figurename}{Figura}
+
+\title{\textbf{TP3 -- Redes Neurais do Zero com Interpretabilidade}\\[2pt]
+\large Breast Cancer Wisconsin (Diagnostic)}
+\author{MC906 -- Inteligência Artificial \quad|\quad Prof. Anderson Rocha}
+\date{Junho de 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Descrição da Implementação}
+
+A MLP foi implementada integralmente do zero com NumPy (\texttt{mlp.py}, $\sim$170 linhas): \textbf{forward pass} ($Z^{(l)} = A^{(l-1)} W^{(l)} + b^{(l)}$, ReLU nas escondidas, Softmax na saída), \textbf{backpropagation} ($\frac{\partial L}{\partial Z^{(L)}} = \text{softmax}(Z^{(L)}) - y_{\text{one-hot}}$), \textbf{atualização} com momentum ($v \leftarrow \beta v - \alpha \frac{\partial L}{\partial W}$, $W \leftarrow W + v$), \textbf{inicialização He} ($W \sim \mathcal{N}(0, \sqrt{2 / \text{fan\_in}})$). Arquitetura base: \texttt{[30, 64, 32, 2]}, loss cross-entropy: $L = -\frac{1}{N} \sum_{i=1}^{N} \log(\hat{y}_{i, y_i})$.
+
+\section{Análise Exploratória de Dados}
+
+569 instâncias, 30 features (10 características nucleares $\times$ 3 variantes: média, erro padrão, pior valor). Classes: 357 B (62,7\%), 212 M (37,3\%). Dados padronizados (z-score) antes do treinamento.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.33\textwidth}
+        \includegraphics[width=\textwidth]{../images/01_distribuicao_classes.png}
+        \caption{Distribuição das classes.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.64\textwidth}
+        \includegraphics[width=\textwidth]{../images/02_boxplots_grupos.png}
+        \caption{Boxplots padronizados por grupo (média, erro padrão, pior valor).}
+    \end{subfigure}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../images/03_histogramas_mean.png}
+    \caption{Distribuição das features de média por classe. \texttt{concave\_points}, \texttt{perimeter} e \texttt{area} mostram clara separação entre benignos (verde) e malignos (vermelho).}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/04_correlacao_mean.png}
+        \caption{Correlação das features de média. \texttt{radius}, \texttt{perimeter} e \texttt{area} são altamente correlacionados ($r>0{,}95$).}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/05_pairplot.png}
+        \caption{Pairplot das 6 features mais discriminativas.}
+    \end{subfigure}
+\end{figure}
+
+\section{Treinamento e Avaliação}
+
+80\% treino (455), 20\% teste (114), split estratificado. Modelo base: [30, 64, 32, 2], $\alpha=0{,}01$, batch=32, 200 épocas. Resultados:
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcc}
+        \toprule
+        Métrica & Treino & Teste \\
+        \midrule
+        Loss      & 0{,}0265 & 0{,}1027 \\
+        Acurácia  & 0{,}9956 & \textbf{0{,}9825} \\
+        \bottomrule
+    \end{tabular}
+    \quad
+    \includegraphics[width=0.55\textwidth]{../images/06_curvas_treinamento.png}
+\end{table}
+
+O modelo atinge 98,25\% de acurácia no teste. Leve overfitting a partir da época $\sim$40 (loss de treino cai enquanto a de teste sobe levemente), sem degradação da acurácia.
+
+\subsection{Impacto dos Hiperparâmetros}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/07_experimento_lr.png}
+        \caption{Taxa de aprendizado: $\alpha=0{,}01$ é o melhor equilíbrio; $\alpha=0{,}001$ lento; $\alpha=0{,}1$ pode divergir.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/08_experimento_batch.png}
+        \caption{Tamanho do batch: 32 é o melhor custo-benefício entre ruído e velocidade.}
+    \end{subfigure}
+    
+    \vspace{4pt}
+    
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/09_experimento_arquitetura.png}
+        \caption{Arquitetura: 2 camadas $>$ 1 camada; ganho marginal além de 64+32 neurônios.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/15_experimento_momentum.png}
+        \caption{Momentum: $\beta=0{,}9$ com $\alpha=0{,}01$ causa overshooting (95,6\% vs 98,3\%); passo efetivo $\approx 0{,}1$.}
+    \end{subfigure}
+\end{figure}
+
+\section{Interpretabilidade}
+
+Três técnicas: \textbf{Saliency Maps} ($|\partial \hat{y}_c / \partial x_i|$), \textbf{Perturbação} (queda na probabilidade ao zerar cada feature) e \textbf{Ablação} (remoção da linha de $W_0$ correspondente).
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/10_interpretabilidade_saliency.png}
+        \caption{Saliency: sensibilidade local via gradiente.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/11_interpretabilidade_perturbacao.png}
+        \caption{Perturbação: impacto ao zerar cada feature.}
+    \end{subfigure}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/12_interpretabilidade_ablacao.png}
+        \caption{Ablação: impacto ao remover a feature do modelo.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../images/14_ablacao_cumulativa.png}
+        \caption{Ablação progressiva: 10 features concentram a capacidade preditiva.}
+    \end{subfigure}
+\end{figure}
+
+\subsection{Features Mais Importantes}
+
+As três técnicas convergem (Spearman $\rho > 0{,}85$) nas mesmas top features: \texttt{worst\_concave\_points}, \texttt{worst\_perimeter}, \texttt{mean\_area}, \texttt{mean\_concavity} e \texttt{worst\_texture}. \textbf{Interpretação médica:} núcleos maiores com contorno irregular (concavidades) e textura heterogênea são marcadores clássicos de malignidade em FNA. Perturbação e ablação produzem resultados equivalentes (zerar feature padronizada $\equiv$ remover linha de $W_0$).
+
+\subsection{Decisões Individuais}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../images/13_decisoes_individuais.png}
+    \caption{Quatro casos: VP, VN, FN e FP. O FN apresenta valores baixos de \texttt{worst\_concave\_points} mascarando malignidade; o FP mostra concavidade elevada em tumor benigno borderline (P(M)=61,2\%).}
+\end{figure}
+
+\section{Discussão e Conclusão}
+
+\textbf{Fortes:} implementação do zero; três técnicas de interpretabilidade convergentes; features identificadas correspondem a marcadores citológicos conhecidos. \textbf{Limitações:} dataset desbalanceado (técnicas de rebalanceamento não exploradas); leve overfitting (regularização poderia melhorar calibração); experimentos com split único. \textbf{Extras:} inicialização He, momentum ($\beta$ configurável), perturbação e ablação além dos gradientes obrigatórios.
+
+\textbf{Conclusão:} implementação completa de MLP do zero atingindo \textbf{98,25\% de acurácia} no Breast Cancer Wisconsin. $\alpha=0{,}01$, batch=32 e arquitetura \texttt{[30, 64, 32, 2]} oferecem o melhor equilíbrio. As três técnicas de interpretabilidade identificaram features consistentes com o conhecimento médico e permitiram explicar decisões individuais, incluindo análise de erros.
+
+\end{document}
