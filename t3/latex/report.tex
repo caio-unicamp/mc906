@@ -82,12 +82,12 @@ O \textit{pairplot} (Figura 3b) reitera que a combinação das \textit{features}
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}{0.48\textwidth}
+    \begin{subfigure}{0.43\textwidth}
         \includegraphics[width=\textwidth]{../images/04_correlacao_mean.png}
         \caption{Correlação das features de média. \texttt{radius}, \texttt{perimeter} e \texttt{area} são altamente correlacionados ($r>0{,}95$).}
     \end{subfigure}
     \hfill
-    \begin{subfigure}{0.48\textwidth}
+    \begin{subfigure}{0.43\textwidth}
         \includegraphics[width=\textwidth]{../images/05_pairplot.png}
         \caption{Pairplot das 6 features mais discriminativas.}
     \end{subfigure}
@@ -203,13 +203,13 @@ Do ponto de vista matemático, também foi possível constatar que as técnicas 
 
 Para compreender o comportamento prático do modelo além das métricas globais, a interpretabilidade foi aplicada para analisar decisões a nível de instância (Figura 7), contemplando casos de sucesso (Verdadeiro Positivo e Verdadeiro Negativo) e falhas (Falso Positivo e Falso Negativo).
 
+A análise das falhas revela as limitações inerentes aos dados. No caso do Falso Negativo (FN), o modelo diagnosticou a instância maligna como benigna porque a amostra apresentava níveis anormalmente baixos do atributo \texttt{worst\_concave\_points} (a \textit{feature} de maior peso na rede). A ausência desse marcador crítico de irregularidade nuclear mascarou a malignidade perante o modelo. Por outro lado, o Falso Positivo (FP) ilustra um cenário de incerteza clínica (caso \textit{borderline}). O modelo classificou o tumor benigno como maligno com uma probabilidade de $61.2\%$ (relativamente baixa e indicativa de insegurança). Ao inspecionar as explicações locais, nota-se que a decisão foi forçada por uma concavidade excepcionalmente elevada para uma amostra benigna, o que induziu a rede neural ao erro ao priorizar a geometria do contorno sobre as demais métricas estabilizadoras.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.75\textwidth]{../images/13_decisoes_individuais.png}
     \caption{Quatro casos: VP, VN, FN e FP. O FN apresenta valores baixos de \texttt{worst\_concave\_points} mascarando malignidade; o FP mostra concavidade elevada em tumor benigno borderline (P(M)=61,2\%).}
-\end{figure}
-
-A análise das falhas revela as limitações inerentes aos dados. No caso do Falso Negativo (FN), o modelo diagnosticou a instância maligna como benigna porque a amostra apresentava níveis anormalmente baixos do atributo \texttt{worst\_concave\_points} (a \textit{feature} de maior peso na rede). A ausência desse marcador crítico de irregularidade nuclear mascarou a malignidade perante o modelo. Por outro lado, o Falso Positivo (FP) ilustra um cenário de incerteza clínica (caso \textit{borderline}). O modelo classificou o tumor benigno como maligno com uma probabilidade de $61.2\%$ (relativamente baixa e indicativa de insegurança). Ao inspecionar as explicações locais, nota-se que a decisão foi forçada por uma concavidade excepcionalmente elevada para uma amostra benigna, o que induziu a rede neural ao erro ao priorizar a geometria do contorno sobre as demais métricas estabilizadoras.
+\end{figure}    
 
 \section{Discussão e Conclusão}
 O ecossistema de interpretabilidade implementado conferiu alto grau de confiabilidade ao classificador, uma vez que a forte convergência estatística verificada entre as três metodologias empregadas atua como um mecanismo de validação cruzada para as explicações. Sob a perspectiva do domínio de aplicação, as propriedades geométricas priorizadas de forma autônoma pelas camadas internas guardam correlação direta com os marcadores citológicos descritos na literatura médica para o diagnóstico de tumores malignos via agulha fina.
