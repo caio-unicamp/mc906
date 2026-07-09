@@ -115,6 +115,8 @@ A combinação final é uma \textbf{média ponderada} das previsões OOF, com pe
 \section{Resultados e Comparação de Modelos}
 A Tabela~\ref{tab:comparison} e a Figura~\ref{fig:model-comp} sumarizam a AUC OOF de todas as abordagens. Na execução final, o \textbf{XGBoost} atingiu a melhor AUC OOF, \textbf{0,7876}. O \textit{ensemble} ficou praticamente empatado (\textbf{0,7865}), ligeiramente abaixo em AUC, mas obteve a melhor \textit{Average Precision} (0,2832), métrica complementar relevante no contexto de forte desbalanceamento.
 
+No Kaggle, esse desempenho se traduziu em uma submissão final de aproximadamente \textbf{0,78 AUC} (\textbf{Score = 0,78173} e \textbf{Public score = 0,7828}). Para contextualizar o resultado, a melhor submissão da competição ficou em torno de \textbf{0,80 AUC}. Assim, nossa solução ficou cerca de \textbf{0,02 ponto de AUC} abaixo do topo: uma diferença pequena em escala absoluta, mas relevante em uma competição madura e bastante saturada. Essa diferença reforça a interpretação central deste trabalho: os modelos testados já estavam próximos das famílias de métodos usadas pelas melhores soluções, e o ganho restante provavelmente dependeria mais de engenharia de atributos do que de simplesmente trocar o classificador.
+
 \begin{table}[H]
     \centering
     \small
