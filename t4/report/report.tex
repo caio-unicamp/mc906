@@ -227,9 +227,53 @@ Essa combinação é mais informativa do que uma única lista de importância. E
     \label{fig:shap-importance}
 \end{figure}
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{images/explainability_shap_group_importance.png}
+    \caption{Participação de cada família de atributos na importância SHAP total.}
+    \label{fig:shap-group-importance}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{images/explainability_top_shap_by_group.png}
+    \caption{Principais atributos SHAP coloridos por família de origem.}
+    \label{fig:shap-top-by-group}
+\end{figure}
+
 \textbf{As fontes externas e suas interações dominam.} A importância SHAP (Figura~\ref{fig:shap-importance}) aponta principalmente para atributos derivados das fontes externas de crédito: \texttt{EXT\_SOURCE\_MEAN}, \texttt{EXT\_SOURCE\_MEAN\_x\_AGE}, \texttt{EXT\_SOURCE\_12} e \texttt{EXT\_SOURCE\_23}. O sinal observado nas análises SHAP é coerente com o domínio: valores altos de fontes externas tendem a empurrar a previsão para menor risco, pois representam escores de crédito pré-existentes.
 
+As Figuras~\ref{fig:shap-group-importance} e~\ref{fig:shap-top-by-group} deixam esse ponto mais claro: a explicação não é dominada apenas por variáveis brutas da aplicação, mas por famílias de atributos construídas a partir de escores externos, razões financeiras, histórico de parcelas, informações de bureau e aplicações anteriores. Isso reforça que o ganho do modelo vem principalmente de representar melhor o cliente, não apenas de trocar o algoritmo.
+
 Logo abaixo, um segundo grupo de atributos aparece de forma consistente: relação emprego/idade, razão bem/crédito, gênero, histórico de pagamento de parcelas e escolaridade. É notável que atributos \textbf{engenheirados} a partir das tabelas suplementares e da própria aplicação figuram entre os mais importantes, validando empiricamente o esforço de engenharia de atributos descrito na Seção~3.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{images/explainability_correlation_direction.png}
+    \caption{Direção dos principais sinais lineares associados ao alvo. Barras à direita indicam maior risco quando o atributo aumenta; barras à esquerda indicam menor risco.}
+    \label{fig:correlation-direction}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{images/explainability_ext_source2_default_rate.png}
+    \caption{Taxa real de inadimplência por decil de \texttt{EXT\_SOURCE\_2}.}
+    \label{fig:ext-source2-decile}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{images/explainability_credit_income_default_rate.png}
+    \caption{Taxa real de inadimplência por decil da razão crédito/renda.}
+    \label{fig:credit-income-decile}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{images/explainability_high_risk_profile.png}
+    \caption{Perfil médio do decil de maior risco em relação à população total, medido em desvios-padrão.}
+    \label{fig:high-risk-profile}
+\end{figure}
 
 \subsection{Leitura dos Métodos de Explicação}
 Os métodos de explicabilidade sugerem a mesma conclusão prática. O modelo não melhorou por aprender apenas padrões superficiais da tabela principal; ele depende de representações construídas a partir de relações entre renda, crédito, idade, emprego e histórico de pagamentos. Em particular:
