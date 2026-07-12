@@ -37,85 +37,87 @@
 \maketitle
 
 \section{Descrição do Problema}
-Este trabalho aborda a competição \textit{Home Credit Default Risk}\footnote{\url{https://www.kaggle.com/competitions/home-credit-default-risk}} do Kaggle, cujo objetivo é prever a probabilidade de um cliente vir a se tornar inadimplente (\textit{default}) em um empréstimo. Trata-se de um problema de \textbf{classificação binária} sobre dados tabulares, no qual a variável alvo \texttt{TARGET} assume valor $1$ para clientes que apresentaram dificuldades de pagamento e $0$ caso contrário.
+Este projeto aborda a competição \textit{Home Credit Default Risk}\footnote{\url{https://www.kaggle.com/competitions/home-credit-default-risk}} do Kaggle, cujo objetivo é prever a probabilidade de um cliente se tornar inadimplente (\textit{default}) em um empréstimo. O desafio trata-se de um problema de \textbf{classificação binária} amparado por um conjunto de dados substancial (\textbf{307.511} exemplos de treino e \textbf{48.744} de teste) e avaliado pela \textbf{métrica oficial ROC AUC}. Essa métrica é ideal para o contexto da competição, que é caracterizado por um \textbf{desbalanceamento severo} de classes, com apenas $\sim$8,1\% de inadimplentes (variável \texttt{TARGET} igual a 1).
 
-O conjunto de dados é substancial e realista: \textbf{307.511} exemplos de treino e \textbf{48.744} de teste, atendendo com folga o requisito de $10.000$ instâncias. Os dados estão distribuídos em \textbf{sete tabelas relacionais} --- além da aplicação principal (\texttt{application\_train}/\texttt{test}), há informações históricas do bureau de crédito (\texttt{bureau}, \texttt{bureau\_balance}), de pedidos anteriores na própria instituição (\texttt{previous\_application}), de saldos de crédito rotativo (\texttt{credit\_card\_balance}), de crediário (\texttt{POS\_CASH\_balance}) e do histórico de parcelas pagas (\texttt{installments\_payments}). A \textbf{métrica oficial} da competição é a \textbf{área sob a curva ROC (ROC AUC)}, adequada ao contexto de forte desbalanceamento de classes, pois avalia a capacidade de \textit{ordenação} do risco independentemente de um limiar de decisão fixo.
-
-O desafio central é duplo: (i) o \textbf{desbalanceamento severo} --- apenas $\sim$8,1\% dos clientes são inadimplentes --- e (ii) a necessidade de \textbf{consolidar informação relacional} dispersa em milhões de registros históricos em um único vetor de atributos por cliente. Nossa estratégia combina engenharia de atributos agressiva sobre as tabelas suplementares, seis modelos-base distintos (de uma linha de base linear a redes neurais, \textit{gradient boosting} e floresta aleatória), sua combinação em um \textit{ensemble} ponderado, e uma análise de interpretabilidade baseada em SHAP e importância por permutação.
-
-\subsection{Enquadramento nos Requisitos}
-O problema escolhido cumpre os requisitos do TP4: é uma competição de \textbf{classificação binária}, possui muito mais de 10.000 exemplos, utiliza a \textbf{métrica oficial ROC AUC}, compara mais de três abordagens distintas e inclui análise de interpretabilidade, limitações e comparação com o ranking público do Kaggle. A submissão final avaliada foi o arquivo \texttt{submission.csv}.
+A base de dados é realista e estruturada em \textbf{sete tabelas relacionais}, o que impõe o desafio técnico de consolidar informações financeiras dispersas --- como histórico no bureau de crédito, pedidos anteriores e pagamentos de parcelas --- em um único vetor de atributos por cliente. Para solucionar o problema comparando mais de três metodologias, a estratégia utilizada combinou engenharia de atributos agressiva sobre as tabelas suplementares, avaliação de seis modelos-base distintos (incluindo regressão logística, floresta aleatória, redes neurais e \textit{gradient boosting}), e a consolidação das previsões em um \textit{ensemble} ponderado. O trabalho também contempla análises profundas de interpretabilidade (utilizando SHAP) e limitações da abordagem, culminando na submissão final registrada no arquivo \texttt{submission.csv}.
 
 \section{Análise Exploratória de Dados}
-A Figura~\ref{fig:eda-target} mostra a primeira observação estrutural que guiou todo o projeto: a distribuição do alvo confirma o desbalanceamento acentuado. De cada $\sim$12 clientes, apenas um é inadimplente. Esse fato torna a acurácia bruta uma métrica enganosa (um classificador trivial que preveja ``sempre paga'' já atinge $\sim$92\% de acurácia) e justifica tanto o uso da AUC quanto as estratégias de rebalanceamento adotadas na modelagem.
+A análise estrutural do conjunto de dados revelou um desbalanceamento acentuado na variável alvo (Figura~\ref{fig:eda-dist}a), em que apenas $\sim$8,1\% dos clientes são inadimplentes (uma proporção de 1 para 12). Esse cenário torna a acurácia uma métrica enganosa --- visto que um classificador trivial que preveja invariavelmente a classe majoritária alcançaria $\sim$91,9\% de acurácia --- justificando a adoção da métrica ROC AUC e de técnicas de rebalanceamento de classes na modelagem.
+
+A investigação das variáveis preditivas evidenciou forte sinal discriminatório em atributos numéricos e categóricos. Fontes externas de crédito (como \texttt{EXT\_SOURCE\_2}) exibem distribuições nitidamente deslocadas para valores menores entre os inadimplentes, concentrando o maior risco (Figura~\ref{fig:eda-dist}b). 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.72\textwidth]{images/eda_target_distribution.png}
-    \caption{Distribuição do alvo: apenas $\sim$8,1\% dos clientes apresentam \textit{default}.}
-    \label{fig:eda-target}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/eda_target_distribution.png}
+        \caption{Distribuição da variável alvo (\texttt{TARGET}).}
+        \label{fig:eda-target}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/eda_ext_source_2_by_target.png}
+        \caption{Comportamento de \texttt{EXT\_SOURCE\_2} por classe.}
+        \label{fig:ext-source}
+    \end{subfigure}
+    \caption{Análise de desbalanceamento do alvo e comportamento discriminatório do \textit{score} externo de crédito.}
+    \label{fig:eda-dist}
 \end{figure}
-
-As Figuras~\ref{fig:ext-source} e~\ref{fig:age-rate} revelam sinais preditivos claros já nas variáveis cruas. As fontes externas de crédito têm distribuição deslocada para valores menores entre inadimplentes, e clientes mais jovens inadimplem proporcionalmente mais. O valor do crédito solicitado, por sua vez, apresenta sobreposição substancial entre as classes, indicando que isoladamente é um preditor fraco, embora ganhe relevância quando combinado a outras variáveis (razões de endividamento).
-
-Entre as categóricas, o nível de escolaridade (Figura~\ref{fig:education-rate}), o gênero e o tipo de renda apresentam taxas de \textit{default} que se afastam nitidamente da taxa base de 8,1\%, confirmando seu valor preditivo.
+\newpage
+Paralelamente, observou-se uma relação inversa entre a idade do cliente e o risco de crédito, com a taxa de \textit{default} superando a média populacional entre indivíduos mais jovens (Figura~\ref{fig:eda-features}a). Variáveis categóricas, como o nível de escolaridade (Figura~\ref{fig:eda-features}b), gênero e tipo de renda, também demonstraram desvios significativos em relação à taxa base de 8,1\%, confirmando seu valor preditivo. Por outro lado, o valor bruto do crédito solicitado apresentou forte sobreposição entre as classes, revelando-se um preditor fraco de forma isolada, o que demandou a criação de razões financeiras na etapa de engenharia de atributos.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.74\textwidth]{images/eda_ext_source_2_by_target.png}
-    \caption{Distribuição de \texttt{EXT\_SOURCE\_2} por classe. Valores menores concentram maior risco.}
-    \label{fig:ext-source}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.78\textwidth]{images/eda_default_rate_by_age.png}
-    \caption{Taxa de \textit{default} por faixa etária. O risco é maior entre clientes mais jovens.}
-    \label{fig:age-rate}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.82\textwidth]{images/eda_default_rate_name_education_type.png}
-    \caption{Taxa de \textit{default} por nível de escolaridade em comparação à taxa base.}
-    \label{fig:education-rate}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/eda_default_rate_by_age.png}
+        \caption{Taxa de \textit{default} por faixa etária.}
+        \label{fig:age-rate}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/eda_default_rate_name_education_type.png}
+        \caption{Taxa de \textit{default} por nível de escolaridade.}
+        \label{fig:education-rate}
+    \end{subfigure}
+    \caption{Comportamento da taxa de inadimplência de acordo com atributos demográficos e socioeconômicos.}
+    \label{fig:eda-features}
 \end{figure}
 
 \section{Engenharia de Atributos e Pré-processamento}
-O grande diferencial de uma boa solução neste problema não está no modelo, mas na capacidade de extrair sinal das tabelas relacionais. A evidência prática é forte: os melhores modelos do nosso experimento são variações da mesma família usada pelas soluções líderes (LightGBM/XGBoost/CatBoost), mas ainda há diferença relevante para o topo do ranking. Portanto, o gargalo provável não foi a escolha do algoritmo, e sim a profundidade da \textbf{engenharia de atributos}.
+Visto que os algoritmos de estado da arte para dados tabulares pertencem majoritariamente à mesma família de \textit{gradient boosting}, o diferencial de desempenho neste desafio reside na \textbf{engenharia de atributos}, e não na escolha do modelo isoladamente. O obstáculo técnico consiste em condensar históricos relacionais de tamanho variável (múltiplos empréstimos anteriores, registros de bureau e parcelas mensais) em um vetor de características de dimensão fixa por cliente (\texttt{SK\_ID\_CURR}). 
 
-Cada cliente (\texttt{SK\_ID\_CURR}) possui um número variável de registros históricos --- diversos empréstimos no bureau, várias parcelas pagas ao longo de meses, etc. Para consolidar essa informação em um vetor de tamanho fixo, aplicamos \textbf{agregações estatísticas por cliente} (\texttt{groupby} + média/mínimo/máximo/soma/contagem) sobre cada uma das cinco tabelas suplementares. Alguns exemplos representativos:
-
+Para isso, foram estruturadas agregações estatísticas (\texttt{groupby} aplicando média, mínimo, máximo, soma e contagem) sobre as cinco tabelas suplementares, destacando-se as seguintes frentes:
 \begin{itemize}
-    \item \textbf{Bureau} (\texttt{BUR\_*}): média/soma/máximo de valores de crédito, dívida e atraso; contagem de créditos ativos; proporção de cada tipo de crédito. As \textit{flags} de status mensal (\texttt{bureau\_balance}) foram agregadas por \textit{one-hot} + média, capturando a fração de meses em atraso.
-    \item \textbf{Pedidos anteriores} (\texttt{PRV\_*}): estatísticas de valores solicitados/aprovados e, crucialmente, as \textbf{razões de aprovação e recusa} (\texttt{PRV\_APPROVED\_RATIO}, \texttt{PRV\_REFUSED\_RATIO}) --- um histórico de recusas é forte indício de risco.
-    \item \textbf{Parcelas} (\texttt{INS\_*}): a razão entre o pago e o devido (\texttt{INS\_PAYMENT\_RATIO}), o atraso médio em dias (\texttt{INS\_LATE\_DAYS\_MEAN}) e a diferença média de valor (\texttt{INS\_PAYMENT\_DIFF\_MEAN}), que sumarizam a disciplina de pagamento histórica.
-    \item \textbf{Tabela principal}: além das colunas originais, criamos agregações e interações das fontes externas, razões de endividamento, razão valor do bem/crédito e variáveis de ciclo de vida como emprego/idade.
+    \item \textbf{Bureau (\texttt{BUR\_*})} e \textbf{Balanço (\texttt{bureau\_balance})}: Sumarização de saldos devedores, dias em atraso e volume de créditos ativos. As \textit{flags} de status mensal foram agregadas por \textit{one-hot} seguido de média, capturando a fração de meses em inadimplência.
+    \item \textbf{Pedidos Anteriores (\texttt{PRV\_*})}: Métricas de valores propostos versus aprovados e, crucialmente, as taxas de deferimento e rejeição (\texttt{PRV\_APPROVED\_RATIO}, \texttt{PRV\_REFUSED\_RATIO}), mapeando o histórico de crédito na própria instituição.
+    \item \textbf{Histórico de Parcelas (\texttt{INS\_*})}: Indicadores de pontualidade e comportamento financeiro, incluindo a razão de pagamento (\texttt{INS\_PAYMENT\_RATIO}), atraso médio em dias (\texttt{INS\_LATE\_DAYS\_MEAN}) e a discrepância média de valores (\texttt{INS\_PAYMENT\_DIFF\_MEAN}).
+    \item \textbf{Tabela Principal}: Injeção de conhecimento de domínio através de interações e razões financeiras cruciais, como o cruzamento do escore externo com a idade (\texttt{EXT\_SOURCE\_MEAN\_x\_AGE}), índices de endividamento, razão crédito/renda e a taxa de ciclo de vida (tempo de emprego relativo à idade).
 \end{itemize}
 
-Após a fusão das agregações à tabela principal, o conjunto passou de $\sim$120 para \textbf{$\sim$350 atributos}. O pipeline de pré-processamento contemplou: (i) \textit{Label Encoding} das variáveis categóricas com ajuste conjunto sobre treino+teste para consistência de vocabulário; (ii) \textbf{imputação} de faltantes pela mediana (estratégia robusta a assimetrias); (iii) conversão para \texttt{float32}, reduzindo pela metade o consumo de RAM sobre $\sim$356 mil linhas; (iv) \textbf{filtro de variância} (\texttt{VarianceThreshold} $= 0{,}001$) para descartar atributos quase-constantes gerados pelas agregações; e (v) \textbf{escalonamento robusto} (\texttt{RobustScaler}, baseado em mediana e IQR) para os modelos sensíveis à escala (regressão logística e rede neural). Os modelos baseados em árvores operaram sobre os dados não escalonados, pois são invariantes a transformações monotônicas.
+O processo de fusão expandiu o espaço de características de $\sim$120 para \textbf{$\sim$350 atributos}, acionando um pipeline de pré-processamento padronizado: (i) \textit{Label Encoding} homogêneo das variáveis categóricas via ajuste conjunto sobre treino e teste; (ii) \textbf{imputação pela mediana} para tratar dados faltantes de forma robusta a \textit{outliers} e assimetrias; (iii) conversão tipográfica para \texttt{float32}, reduzindo em 50\% o consumo de RAM; (iv) remoção de colunas redundantes ou quase-constantes via \textbf{filtro de variância} (\texttt{VarianceThreshold} $= 0{,}001$); e (v) \textbf{escalonamento robusto} (\texttt{RobustScaler}, baseado em mediana e IQR) aplicado estritamente aos modelos sensíveis à escala (regressão logística e rede neural), preservando a invariância monotônica original para os modelos de árvore. 
 
-Essa engenharia ainda é conservadora quando comparada às soluções competitivas do Kaggle. Ela resume históricos por cliente, mas não explora profundamente tendência temporal, recência de atraso, janelas móveis, razões cruzadas entre tabelas ou contagens condicionais por status. Esses pontos aparecem novamente nas limitações porque são a oportunidade mais clara de melhoria.
+Embora robusta, essa abordagem consolidada por cliente adota uma postura conservadora se comparada às soluções do topo do Kaggle, que exploram janelas temporais móveis, recência de atrasos e razões cruzadas inter-tabelas --- oportunidades de melhoria detalhadas na Seção~8.
 
 \section{Modelagem e Estratégia de Validação}
-Comparamos \textbf{seis modelos-base} distintos, cobrindo o espectro exigido pelo enunciado: uma linha de base linear, três variantes de \textit{gradient boosting}, um modelo de \textit{bagging} e uma rede neural profunda. Em seguida, consolidamos os modelos não lineares em um \textit{ensemble} ponderado.
+Foram avaliados \textbf{seis modelos-base} distintos sob um protocolo de \textbf{validação cruzada estratificada em 5 folds}, garantindo a preservação da proporção original de classes em todas as partições. O desempenho de cada classificador foi mensurado via previsões \textit{out-of-fold} (OOF) para mitigar qualquer risco de vazamento de dados (\textit{data leakage}), enquanto as predições finais de teste consistiram na média das probabilidades geradas por cada fold.
 
-\textbf{Validação cruzada.} Toda avaliação empregou \textbf{validação cruzada estratificada em 5 folds}, preservando a proporção de classes em cada partição. Para cada modelo, geramos previsões \textit{out-of-fold} (OOF) --- em que cada exemplo de treino é predito apenas pelo modelo que \textit{não} o viu --- o que fornece uma estimativa da AUC honesta e sem vazamento. As previsões de teste são a média das cinco reproduções de cada \textit{fold}. O desbalanceamento foi tratado de forma nativa em cada família: peso positivo $\approx 11{,}4$ nos \textit{boosters}, pesos balanceados na floresta aleatória e amostragem ponderada + \texttt{pos\_weight} na rede neural.
-
+O desbalanceamento foi tratado de maneira nativa em cada ecossistema: aplicou-se peso positivo proporcional ($\approx 11{,}4$) nos \textit{boosters}, pesos balanceados por subamostragem na floresta aleatória, e amostragem ponderada combinada a \texttt{pos\_weight} na rede neural. Os paradigmas testados compreenderam:
 \begin{itemize}
-    \item \textbf{Regressão Logística (linha de base):} modelo linear sobre os dados escalonados, estabelecendo o piso de desempenho.
-    \item \textbf{XGBoost / LightGBM / CatBoost:} três implementações de \textit{gradient boosting} com filosofias complementares (crescimento por nível \textit{vs.} por folha \textit{vs.} tratamento nativo de categóricas). A execução final usou até 4.000 iterações, \texttt{learning\_rate} $=0{,}03$, regularização, subamostragem de linhas/colunas e \textit{early stopping} de 150--200 rodadas.
-    \item \textbf{Random Forest:} \textit{bagging} de 150 árvores (profundidade 12, mín.\ 30 amostras por folha e subamostragem de atributos por raiz quadrada). Por construir árvores independentes sobre amostras \textit{bootstrap}, seus erros são menos correlacionados com os dos \textit{boosters} --- diversidade valiosa para o \textit{blend}.
-    \item \textbf{Rede Neural (PyTorch):} MLP \textit{feedforward} com arquitetura $[512, 256, 128, 64]$, \texttt{BatchNorm}, \texttt{Dropout} de 0,3, otimizador \texttt{AdamW} e \texttt{ReduceLROnPlateau}. O balanceamento foi feito via amostragem ponderada por classe.
+    \item \textbf{Regressão Logística (Linha de Base):} Modelo linear simples ajustado sobre dados escalonados para estabelecer o piso de desempenho preditivo do experimento.
+    \item \textbf{XGBoost / LightGBM / CatBoost:} Três implementações distintas de \textit{gradient boosting} com filosofias complementares (crescimento por nível, crescimento por folha e tratamento nativo de variáveis categóricas, respectivamente). Foram parametrizados com até 4.000 iterações, \texttt{learning\_rate} $=0{,}03$, regularização e critério de parada precoce (\textit{early stopping}) entre 150 e 200 rodadas.
+    \item \textbf{Random Forest:} Abordagem de \textit{bagging} estruturada com 150 árvores independentes (profundidade 12 e mínimo de 30 amostras por folha). Por construir estimadores isolados via amostras \textit{bootstrap}, gerou erros descorrelacionados em relação aos \textit{boosters}, injetando diversidade ao experimento.
+    \item \textbf{Rede Neural Profunda (PyTorch):} Um Perceptron Multicamadas (MLP) \textit{feedforward} configurado com topologia $[512, 256, 128, 64]$, camadas de \textit{BatchNorm}, \textit{Dropout} de 0,3 para regularização, otimizador \texttt{AdamW} e agendador dinâmico \texttt{ReduceLROnPlateau}.
 \end{itemize}
 
-\subsection{Ensemble Ponderado}
-A combinação final é uma \textbf{média ponderada} das previsões OOF, com pesos atribuídos por desempenho e diversidade: LightGBM (0,30), XGBoost (0,28), CatBoost (0,27), Random Forest (0,10) e Rede Neural (0,05). A regressão logística foi excluída do \textit{blend} por seu desempenho fraco. Os pesos privilegiam os \textit{boosters} mais fortes, mas reservam contribuição para os modelos de famílias distintas (\textit{bagging} e redes neurais), cujos erros descorrelacionados reduzem a variância do conjunto.
+Visando contrair a variância global e extrair o potencial preditivo máximo, consolidou-se os modelos não lineares por meio de uma média ponderada de suas probabilidades OOF (a regressão logística foi descartada devido ao seu fraco desempenho). A distribuição de pesos priorizou os algoritmos preditivamente dominantes, mas preservou a contribuição de famílias estatísticas distintas para garantir resiliência e estabilidade ao conjunto: LightGBM (0,30), XGBoost (0,28), CatBoost (0,27), Random Forest (0,10) e Rede Neural (0,05).
 
 \section{Resultados e Comparação de Modelos}
-A Tabela~\ref{tab:comparison} e a Figura~\ref{fig:model-comp} sumarizam a AUC OOF de todas as abordagens. Na execução final, o \textbf{XGBoost} atingiu a melhor AUC OOF, \textbf{0,7876}. O \textit{ensemble} ficou praticamente empatado (\textbf{0,7865}), ligeiramente abaixo em AUC, mas obteve a melhor \textit{Average Precision} (0,2832), métrica complementar relevante no contexto de forte desbalanceamento.
+Os resultados consolidados via validação cruzada \textit{out-of-fold} (OOF) e o respectivo desempenho preditivo estão sumarizados na Tabela~\ref{tab:comparison}. Na execução final, o \textbf{XGBoost} alcançou a maior robustez métrica individual, registrando uma AUC OOF de \textbf{0,7876}. O \textbf{Ensemble} ponderado obteve um desempenho de ordenação virtualmente empatado (\textbf{0,7865}), mas superou todos os classificadores isolados na métrica de \textbf{\textit{Average Precision} (AP)}, atingindo \textbf{0,2832} --- um ganho expressivo dada a natureza desbalanceada do problema.
 
-No Kaggle, esse desempenho se traduziu em uma submissão final de aproximadamente \textbf{0,78 AUC} (\textbf{Score = 0,78173} e \textbf{Public score = 0,7828}). Para contextualizar o resultado, a melhor submissão da competição ficou em torno de \textbf{0,80 AUC}. Assim, nossa solução ficou cerca de \textbf{0,02 ponto de AUC} abaixo do topo: uma diferença pequena em escala absoluta, mas relevante em uma competição madura e bastante saturada. Essa diferença reforça a interpretação central deste trabalho: os modelos testados já estavam próximos das famílias de métodos usadas pelas melhores soluções, e o ganho restante provavelmente dependeria mais de engenharia de atributos do que de simplesmente trocar o classificador.
+Esse patamar de desempenho convergiu de forma consistente no ambiente de testes do Kaggle, resultando em um escore privado de \textbf{0,78173} e público de \textbf{0,7828} via arquivo \texttt{submission.csv}. Frente às soluções líderes da competição, historicamente estabelecidas em torno de \textbf{0,805} de AUC, a arquitetura desenvolvida posicionou-se no \textbf{top 38\%} do ranking geral ($\sim$3.000ª colocação entre 8.000 participantes). A distância de aproximadamente 0,02 ponto de AUC em relação ao topo confirma a hipótese central deste experimento: os modelos baseados em árvores já operam no limite estatístico do estado da arte tabular, e o incremento residual remanescente depende da profundidade empírica da engenharia de atributos relacionais, não da alternância de algoritmos.
 
 \begin{table}[H]
     \centering
@@ -125,210 +127,216 @@ No Kaggle, esse desempenho se traduziu em uma submissão final de aproximadament
         Modelo & AUC OOF & AP OOF \\
         \midrule
         XGBoost                  & \textbf{0,7876} & 0,2813 \\
-        LightGBM                 & 0,7867 & 0,2803 \\
-        Ensemble                 & 0,7865 & \textbf{0,2832} \\
-        CatBoost                 & 0,7861 & 0,2807 \\
-        Random Forest            & 0,7599 & 0,2437 \\
-        Deep Learning (NN)       & 0,6252 & 0,1335 \\
-        Regressão Logística      & 0,4902 & 0,0776 \\
+        LightGBM                 & 0,7867          & 0,2803 \\
+        Ensemble                 & 0,7865          & \textbf{0,2832} \\
+        CatBoost                 & 0,7861          & 0,2807 \\
+        Random Forest            & 0,7599          & 0,2437 \\
+        Deep Learning (NN)       & 0,6252          & 0,1335 \\
+        Regressão Logística      & 0,4902          & 0,0776 \\
         \bottomrule
     \end{tabular}
-    \captionof{table}{AUC e \textit{Average Precision} \textit{out-of-fold} (5 \textit{folds}).}
+    \caption{AUC e \textit{Average Precision} \textit{out-of-fold} obtidas com validação cruzada em 5 folds.}
     \label{tab:comparison}
 \end{table}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.82\textwidth]{images/model_comparison.png}
-    \caption{Comparação visual da AUC OOF por modelo.}
-    \label{fig:model-comp}
-\end{figure}
+A hierarquia competitiva revelada na Figura~\ref{fig:model-perf} evidencia o domínio dos métodos de \textit{gradient boosting} (XGBoost, LightGBM e CatBoost), que formaram um bloco de vanguarda estatisticamente parelho ($\sim$0,786 - 0,788). A \textit{Random Forest} posicionou-se logo atrás (0,7599), apresentando uma retração esperada para algoritmos de \textit{bagging} frente ao \textit{boosting}, mas consolidando-se como um elemento crucial de diversidade para o metamodelo. 
 
-A hierarquia de desempenho é reveladora. Os três \textbf{\textit{gradient boosters}} formam um pelotão dianteiro praticamente empatado ($\sim$0,786--0,788), confirmando que, para dados tabulares heterogêneos com faltantes, essa é a família dominante. A \textbf{Random Forest} fica atrás (0,760), como esperado do \textit{bagging} frente ao \textit{boosting}, mas ainda contribui diversidade por apresentar correlação menor com os \textit{boosters}. A \textbf{rede neural} (0,625) teve desempenho decepcionante: MLPs têm dificuldade notória com dados tabulares esparsos e de escalas mistas, e mesmo com \texttt{BatchNorm} e balanceamento não rivalizou com as árvores --- por isso seu peso reduzido no \textit{ensemble}. A \textbf{regressão logística} (0,490) ficou abaixo do acaso, evidenciando que a relação entre atributos e risco é fortemente \textbf{não linear} e interativa, fora do alcance de um modelo linear simples.
-
-A Figura~\ref{fig:roc} apresenta as curvas ROC OOF, e as Figuras~\ref{fig:pr-ensemble}--\ref{fig:corr} trazem diagnósticos complementares do \textit{ensemble}. Todas as visualizações foram exportadas como uma figura por arquivo para manter legibilidade no relatório.
+Em contrapartida, a Rede Neural MLP exibiu um comportamento decepcionante (0,6252), reiterando a dificuldade de topologias \textit{feedforward} densas em mapear dados tabulares esparsos e de escalas mistas sem camadas de incorporação (\textit{embeddings}) especializadas. Por fim, a Regressão Logística performou abaixo do acaso (0,4902), atestando de forma empírica que a relação entre o perfil histórico relacional do cliente e o risco de inadimplência é governada por interações estritamente não lineares.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.74\textwidth]{images/roc_curves.png}
-    \caption{Curvas ROC OOF por modelo.}
-    \label{fig:roc}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/model_comparison.png}
+        \caption{Comparação visual de AUC OOF.}
+        \label{fig:model-comp}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/roc_curves.png}
+        \caption{Curvas ROC OOF por modelo.}
+        \label{fig:roc}
+    \end{subfigure}
+    \caption{Métricas globais de ordenação e curvas de sensibilidade discriminatória entre os modelos testados.}
+    \label{fig:model-perf}
 \end{figure}
+
+A análise de separação de classes (Figura~\ref{fig:ensemble-diag}b) exibe um claro deslocamento direcional da classe de risco para a direita; contudo, a persistência de uma zona de sobreposição central reflete o limite intrínseco de separabilidade fixado no teto atual de AUC. Sob a ótica de correlação linear de predições (Figura~\ref{fig:ensemble-diag}c), comprova-se o forte acoplamento entre os três \textit{boosters} ($\sim$0,98), enquanto a \textit{Random Forest} apresenta menor colinearidade ($\sim$0,88), justificando sua inclusão no amortecimento da variância do \textit{blend}. Por fim, ressalta-se que as probabilidades brutas geradas não se encontram calibradas em termos absolutos em decorrência do rebalanceamento artificial via pesos de classe (\texttt{pos\_weight}). Como a métrica oficial (AUC) depende exclusivamente da ordenação ordinal relativa, essa distorção escalar não penaliza a performance competitiva, embora uma etapa subsequente de calibração (isotônica ou Platt) fosse mandatória para subsidiar estratégias reais de tomada de decisão de crédito.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.72\textwidth]{images/ensemble_precision_recall_curve.png}
-    \caption{Curva Precisão-Recall do \textit{ensemble}.}
-    \label{fig:pr-ensemble}
+    \begin{subfigure}[b]{0.35\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/ensemble_precision_recall_curve.png}
+        \caption{Curva Precisão-Recall do ensemble.}
+        \label{fig:pr-ensemble}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.35\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/ensemble_score_distribution.png}
+        \caption{Distribuição de escores por classe real.}
+        \label{fig:score-dist}
+    \end{subfigure}
+    \\ \vspace{6pt}
+    \begin{subfigure}[b]{0.35\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/model_oof_correlation.png}
+        \caption{Correlação entre as previsões OOF.}
+        \label{fig:corr}
+    \end{subfigure}
+    \caption{Diagnósticos comportamentais, distribuição probabilística de risco e análise de diversidade interna do ensemble.}
+    \label{fig:ensemble-diag}
 \end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.70\textwidth]{images/ensemble_score_distribution.png}
-    \caption{Distribuição dos escores OOF do \textit{ensemble} por classe real.}
-    \label{fig:score-dist}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.70\textwidth]{images/model_oof_correlation.png}
-    \caption{Correlação entre previsões OOF dos modelos-base. A Random Forest é menos correlacionada com os \textit{boosters}.}
-    \label{fig:corr}
-\end{figure}
-
-\begin{itemize}
-    \item \textbf{Separação de classes (Fig.~\ref{fig:score-dist}):} a distribuição de escores dos inadimplentes está deslocada para a direita em relação aos bons pagadores, embora haja sobreposição substancial na faixa central --- reflexo direto da AUC de $\sim$0,78, longe de uma separação perfeita.
-    \item \textbf{Diversidade (Fig.~\ref{fig:corr}):} os \textit{boosters} são altamente correlacionados entre si, enquanto a Random Forest é menos correlacionada e por isso contribui diversidade ao \textit{blend}.
-    \item \textbf{Calibração:} as probabilidades não estão calibradas em valor absoluto; o rebalanceamento e os pesos de classe deslocam a escala das probabilidades da classe minoritária. Como a métrica oficial (AUC) depende apenas da \textit{ordenação} e não dos valores absolutos, isso não prejudica a pontuação, mas exigiria uma etapa de recalibração (\textit{e.g.}\ Platt/Isotonic) caso as probabilidades fossem usadas em decisão de negócio.
-\end{itemize}
 
 \section{Análise de Erros e Utilidade de Negócio}
-Além da AUC, avaliamos a solução sob a ótica de \textbf{aplicabilidade prática}, uma vez que um escore de crédito é usado para priorizar análise de risco (Figuras~\ref{fig:gains}--\ref{fig:threshold}). O painel de \textbf{decis de risco} demonstra um comportamento monotônico exemplar: ordenando os clientes pelo escore previsto e agrupando-os em dez faixas, a taxa real de inadimplência cresce de \textbf{1,0\%} no decil de menor risco para \textbf{30,3\%} no de maior risco --- uma concentração de $\sim$3,8$\times$ a taxa base no topo. O índice KS do \textit{ensemble} é 0,432, com separação máxima em torno dos 31\% clientes mais arriscados. Na prática, revisar apenas os clientes de maior escore captura uma fração desproporcional dos inadimplentes, o que é exatamente a utilidade esperada de um modelo de \textit{scoring}.
+Além da métrica estatística pura (AUC), a validação da solução sob a ótica de \textbf{utilidade de negócio} e aplicabilidade prática é fundamental, visto que escores de crédito operam prioritariamente na otimização e priorização de análises de risco. A ordenação dos clientes por \textbf{decis de risco} previstos revelou um comportamento monotônico exemplar (Figura~\ref{fig:business-metrics}c): a taxa real de inadimplência evolui de apenas \textbf{1,0\%} no decil de menor risco para expressivos \textbf{30,3\%} no decil mais crítico. Isso representa uma capacidade de concentração de risco no topo de aproximadamente \textbf{3,8$\times$} em relação à taxa base da população ($\sim$8,1\%), validando o valor operacional do modelo para subsidiar estratégias de triagem automatizada e revisão manual seletiva.
+
+Essa eficiência macroeconômica é corroborada pelas curvas de ganho acumulado (Figura~\ref{fig:business-metrics}a) e de separação de Kolmogorov-Smirnov (KS) (Figura~\ref{fig:business-metrics}b). O \textit{ensemble} registrou um \textbf{índice KS de 0,432}, com o ponto de máxima separação estatística localizado precisamente em torno dos 31\% clientes classificados como mais propensos ao \textit{default}. Na prática bancária, direcionar os esforços de auditoria ou restringir a concessão de crédito a essa fatia específica captura uma parcela desproporcionalmente alta dos potenciais inadimplentes, minimizando perdas financeiras por real investido.
+
+Por outro lado, a análise de limiares de decisão fixos (Figura~\ref{fig:business-metrics}d) ilustra o severo compromisso prático imposto pelo desbalanceamento da classe minoritária. O valor máximo de F1-Score obtido foi modesto, fixando-se em \textbf{0,340} sob um limiar de corte de \textbf{0,24}, associando uma precisão de 0,272 a um \textit{recall} de 0,453. Esse comportamento reitera que, neste domínio de problema, faz mais sentido estratégico utilizar o escore probabilístico contínuo como uma ferramenta de ordenação e ranqueamento de risco do que forçar uma decisão binária com limiar rígido. Embora a curva de Precisão-Recall aponte uma \textit{Average Precision} de 0,2832 --- substancialmente superior à linha de base aleatória de 0,081 --- a distância para o cenário ideal reflete a complexidade intrínseca da tarefa de crédito.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.72\textwidth]{images/cumulative_gains_curve.png}
-    \caption{Curva de ganho acumulado: fração de inadimplentes capturada ao revisar os maiores escores de risco.}
-    \label{fig:gains}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/cumulative_gains_curve.png}
+        \caption{Curva de ganho acumulado.}
+        \label{fig:gains}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/ks_curve.png}
+        \caption{Curva de separação KS do ensemble.}
+        \label{fig:ks}
+    \end{subfigure}
+    \\ \vspace{6pt}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/default_rate_by_risk_decile.png}
+        \caption{Taxa de default por decil de risco.}
+        \label{fig:decile}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/threshold_precision_recall_f1.png}
+        \caption{Métricas por limiar de decisão.}
+        \label{fig:threshold}
+    \end{subfigure}
+    \caption{Métricas de impacto de negócio, eficiência de ranqueamento por decis e análise de sensibilidade de limiares para o ensemble.}
+    \label{fig:business-metrics}
 \end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.72\textwidth]{images/ks_curve.png}
-    \caption{Separação KS do \textit{ensemble}; o máximo ocorre em torno dos 31\% clientes mais arriscados.}
-    \label{fig:ks}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.72\textwidth]{images/default_rate_by_risk_decile.png}
-    \caption{Taxa real de \textit{default} por decil de risco previsto --- crescimento monotônico de 1,0\% a 30,3\%.}
-    \label{fig:decile}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.72\textwidth]{images/threshold_precision_recall_f1.png}
-    \caption{Precisão, \textit{recall} e F1 por limiar de decisão; o F1 máximo (0,340) ocorre em limiar 0,24.}
-    \label{fig:threshold}
-\end{figure}
-
-O painel de \textbf{limiar} (Figura~\ref{fig:threshold}) mostra o compromisso inerente à classe minoritária: o F1 máximo é modesto (0,340, em limiar 0,24), com precisão de 0,272 e \textit{recall} de 0,453. Isso reitera que, neste problema, faz mais sentido usar o escore contínuo para \textit{ranquear} risco do que forçar uma decisão binária com limiar fixo. A curva Precisão-Recall (Figura~\ref{fig:pr-ensemble}) corrobora: a \textit{Average Precision} de 0,283 é muito superior à linha de base de 0,081, mas ainda distante do ideal, refletindo a dificuldade intrínseca da tarefa.
-
+\newpage
 \section{Interpretabilidade}
-Para explicar \textit{por que} o modelo decide como decide, combinamos diferentes leituras de interpretabilidade. A mais importante foi SHAP (\textit{SHapley Additive exPlanations}), porque ela permite decompor o escore previsto em contribuições por atributo. Além disso, usamos importância global dos modelos de árvore, importância por permutação e análise de erros por decis, limiares e distribuição de escores. Essas técnicas se complementam: SHAP mostra direção e magnitude do efeito, a permutação mede queda de desempenho quando um atributo é embaralhado, as importâncias dos modelos verificam estabilidade entre arquiteturas, e os decis conectam o escore a uma interpretação operacional de ranking de risco.
-
-Essa combinação é mais informativa do que uma única lista de importância. Em dados tabulares relacionais, uma variável pode parecer importante apenas por ser correlacionada com outra; por isso, a análise buscou consistência entre métodos. Quando SHAP, importância dos \textit{boosters}, permutação e análise por decis apontam para os mesmos grupos de atributos, a explicação é mais robusta. Quando há divergência, a interpretação deve ser tratada com cautela, especialmente em atributos altamente correlacionados como as fontes externas de crédito.
+Para elucidar o processo de decisão do modelo e mitigar o risco de correlações espúrias comuns em dados tabulares relacionais, adotamos uma abordagem de interpretabilidade multidimensional. O pilar central foi o método SHAP (\textit{SHapley Additive exPlanations}), que decompõe a probabilidade prevista em contribuições marginais por atributo. Para garantir robustez empírica, cruzamos os valores SHAP com a importância por permutação, importância nativa dos modelos de árvore e a análise operacional de decis de risco, buscando consistência entre os diferentes métodos explicativos.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.78\textwidth]{images/shap_feature_importance_single.png}
-    \caption{Importância SHAP média dos principais atributos.}
-    \label{fig:shap-importance}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/shap_feature_importance_single.png}
+        \caption{Importância SHAP média dos atributos.}
+        \label{fig:shap-importance}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/explainability_shap_group_importance.png}
+        \caption{Importância agregada por família de origem.}
+        \label{fig:shap-group-importance}
+    \end{subfigure}
+    \caption{Decomposição SHAP global indicando a predominância de fontes externas e atributos derivados.}
+    \label{fig:shap-analysis}
+\end{figure}
+
+A análise SHAP (Figura~\ref{fig:shap-analysis}a) revela que as previsões são ancoradas prioritariamente nas fontes externas de crédito e suas interações (e.g., \texttt{EXT\_SOURCE\_MEAN}, \texttt{EXT\_SOURCE\_MEAN\_x\_AGE}). O sinal é coerente com a lógica de negócio: maiores escores pré-existentes induzem a previsão para um risco menor. Além disso, a Figura~\ref{fig:shap-analysis}b corrobora que a explicação não é dominada por variáveis brutas da aplicação, mas sim por \textbf{famílias de atributos engenheirados} a partir de históricos relacionais (razões financeiras, parcelas e bureau), validando o esforço de pré-processamento descrito na Seção~3.
+
+Abaixo das fontes externas, um segundo estrato de variáveis demonstra importância sistemática: a relação emprego/idade, a razão valor do bem/crédito, o gênero e o histórico de pagamento de parcelas (Figuras~\ref{fig:risk-profile} e~\ref{fig:risk-deciles}).
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/explainability_correlation_direction.png}
+        \caption{Direção de correlação com o risco.}
+        \label{fig:correlation-direction}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/explainability_high_risk_profile.png}
+        \caption{Perfil em desvios-padrão do decil de maior risco.}
+        \label{fig:high-risk-profile}
+    \end{subfigure}
+    \caption{Sinais lineares e perfil multivariado associados à inadimplência.}
+    \label{fig:risk-profile}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.78\textwidth]{images/explainability_shap_group_importance.png}
-    \caption{Participação de cada família de atributos na importância SHAP total.}
-    \label{fig:shap-group-importance}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.82\textwidth]{images/explainability_top_shap_by_group.png}
-    \caption{Principais atributos SHAP coloridos por família de origem.}
-    \label{fig:shap-top-by-group}
-\end{figure}
-
-\textbf{As fontes externas e suas interações dominam.} A importância SHAP (Figura~\ref{fig:shap-importance}) aponta principalmente para atributos derivados das fontes externas de crédito: \texttt{EXT\_SOURCE\_MEAN}, \texttt{EXT\_SOURCE\_MEAN\_x\_AGE}, \texttt{EXT\_SOURCE\_12} e \texttt{EXT\_SOURCE\_23}. O sinal observado nas análises SHAP é coerente com o domínio: valores altos de fontes externas tendem a empurrar a previsão para menor risco, pois representam escores de crédito pré-existentes.
-
-As Figuras~\ref{fig:shap-group-importance} e~\ref{fig:shap-top-by-group} deixam esse ponto mais claro: a explicação não é dominada apenas por variáveis brutas da aplicação, mas por famílias de atributos construídas a partir de escores externos, razões financeiras, histórico de parcelas, informações de bureau e aplicações anteriores. Isso reforça que o ganho do modelo vem principalmente de representar melhor o cliente, não apenas de trocar o algoritmo.
-
-Logo abaixo, um segundo grupo de atributos aparece de forma consistente: relação emprego/idade, razão bem/crédito, gênero, histórico de pagamento de parcelas e escolaridade. É notável que atributos \textbf{engenheirados} a partir das tabelas suplementares e da própria aplicação figuram entre os mais importantes, validando empiricamente o esforço de engenharia de atributos descrito na Seção~3.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.82\textwidth]{images/explainability_correlation_direction.png}
-    \caption{Direção dos principais sinais lineares associados ao alvo. Barras à direita indicam maior risco quando o atributo aumenta; barras à esquerda indicam menor risco.}
-    \label{fig:correlation-direction}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.78\textwidth]{images/explainability_ext_source2_default_rate.png}
-    \caption{Taxa real de inadimplência por decil de \texttt{EXT\_SOURCE\_2}.}
-    \label{fig:ext-source2-decile}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.78\textwidth]{images/explainability_credit_income_default_rate.png}
-    \caption{Taxa real de inadimplência por decil da razão crédito/renda.}
-    \label{fig:credit-income-decile}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.82\textwidth]{images/explainability_high_risk_profile.png}
-    \caption{Perfil médio do decil de maior risco em relação à população total, medido em desvios-padrão.}
-    \label{fig:high-risk-profile}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/explainability_ext_source2_default_rate.png}
+        \caption{Inadimplência por \texttt{EXT\_SOURCE\_2}.}
+        \label{fig:ext-source2-decile}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/explainability_credit_income_default_rate.png}
+        \caption{Inadimplência por razão Crédito/Renda.}
+        \label{fig:credit-income-decile}
+    \end{subfigure}
+    \caption{Comportamento empírico da taxa real de \textit{default} isolada por decis de variáveis críticas.}
+    \label{fig:risk-deciles}
 \end{figure}
 
 \subsection{Leitura dos Métodos de Explicação}
-Os métodos de explicabilidade sugerem a mesma conclusão prática. O modelo não melhorou por aprender apenas padrões superficiais da tabela principal; ele depende de representações construídas a partir de relações entre renda, crédito, idade, emprego e histórico de pagamentos. Em particular:
+A convergência entre os métodos de explicabilidade (\textit{SHAP global}, \textit{Importância por permutação} e \textit{Importância cruzada entre modelos}) sugere uma conclusão metodológica clara: o \textit{ensemble} não dependeu de peculiaridades de implementação ou de padrões superficiais da tabela principal, mas sim de representações latentes robustas que relacionam renda, crédito, idade, emprego e histórico financeiro. 
 
-\begin{itemize}
-    \item \textbf{SHAP global} identifica os atributos que mais deslocam o escore de inadimplência, com destaque para agregações e interações de \texttt{EXT\_SOURCE}.
-    \item \textbf{Importância por permutação} valida quais atributos realmente afetam a AUC quando têm sua informação destruída, separando importância estatística de simples presença em muitas divisões de árvores.
-    \item \textbf{Importância cruzada entre modelos} verifica se LightGBM, XGBoost, CatBoost e Random Forest dependem de grupos semelhantes de variáveis. A convergência entre modelos reforça que o sinal está nos atributos, não em uma peculiaridade de implementação.
-    \item \textbf{Análise por decis de risco} traduz a explicação para o uso prático: o decil mais arriscado concentra inadimplência muito acima da média, mostrando que o escore é útil para ordenação mesmo quando a classificação binária por limiar fixo é fraca.
-    \item \textbf{Análise local e contrafactual} seria o próximo passo natural: explicar clientes específicos e estimar quais mudanças de atributos reduziriam o risco previsto. Esse tipo de explicação é especialmente relevante para crédito, pois aproxima o modelo de uma justificativa individual auditável.
-\end{itemize}
-
-Do ponto de vista metodológico, essas análises também apontam o que faltou para alcançar o topo do Kaggle: mais engenharia de atributos interpretável. As soluções líderes normalmente criam centenas ou milhares de variáveis adicionais com recência de atraso, tendências temporais, contagens condicionais por status, razões entre tabelas e estatísticas por janelas. Esses atributos não apenas aumentam a AUC, mas também tornam a explicação mais granular, pois permitem distinguir melhor \textit{por que} dois clientes com escores externos parecidos recebem riscos diferentes.
+A \textit{análise por decis de risco} traduziu essas explicações estatísticas em aplicabilidade prática, provando que o modelo é capaz de isolar o risco extremo no topo do funil. Do ponto de vista de limitações metodológicas, o projeto careceu de ferramentas de \textbf{análise local e contrafactual}. Em cenários reais de crédito, estimar como mudanças nos atributos de um cliente específico impactariam seu escore (e.g., via SHAP \textit{waterfall plots}) é o próximo passo natural para fornecer justificativas individuais auditáveis. Adicionalmente, as soluções líderes do Kaggle indicam que a criação de centenas de variáveis focadas em recência temporal e agregações condicionais produziria explicações com maior granularidade do que as obtidas neste trabalho.
 
 \subsection{Estudo de Viés}
-A presença de \texttt{CODE\_GENDER} entre os atributos mais importantes levanta uma preocupação legítima de \textbf{viés e justiça}. O modelo aprende uma associação estatística entre gênero e inadimplência, o que, embora preditivamente útil, é eticamente e por vezes legalmente problemático em concessão de crédito (muitas jurisdições proíbem o uso de gênero em decisões de crédito). Em uma aplicação de produção, recomendaríamos remover atributos protegidos e auditar a diferença de desempenho entre subgrupos, aceitando a eventual perda marginal de AUC em favor da equidade.
+A presença de \texttt{CODE\_GENDER} entre os atributos mais importantes levanta uma preocupação legítima de \textbf{viés e justiça}. O modelo aprende uma associação estatística entre gênero e inadimplência, o que, embora preditivamente útil, é eticamente e por vezes legalmente problemático em concessão de crédito (muitas jurisdições proíbem o uso de gênero em decisões de crédito). Em uma aplicação de produção, seria recomendado remover atributos protegidos e auditar a diferença de desempenho entre subgrupos, aceitando a eventual perda marginal de AUC em favor da equidade.
 
 \section{Comparação com o Ranking do Kaggle}
-A métrica oficial da competição é a AUC no Kaggle. A submissão final foi o arquivo \texttt{submission.csv}, enviado por Rodrigo Banin Ferraz de Camargo. O Kaggle reportou \textbf{Score = 0,78173} e \textbf{Public score = 0,7828}. A posição observada no \textit{leaderboard} foi aproximadamente \textbf{3000 de 8000 participantes}, isto é, por volta dos 37--38\% melhores colocados e claramente dentro da metade superior da competição. A Figura~\ref{fig:kaggle-submission} documenta a submissão.
+A validação empírica da solução ocorreu por meio da submissão oficial (\texttt{submission.csv}) na plataforma Kaggle (Figura~\ref{fig:kaggle-submission}). O sistema reportou um \textbf{Score Privado de 0,78173} e um \textbf{Score Público de 0,7828}. Essa pontuação garantiu uma posição aproximada de \textbf{3.000 entre 8.000 equipes participantes}, inserindo o modelo com folga no \textbf{top 38\%} do \textit{leaderboard}. A estabilidade entre a melhor estimativa OOF (0,7876) e o desempenho na plataforma comprova a eficácia da validação cruzada adotada contra o vazamento de dados.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.82\textwidth]{images/kaggle_submission.png}
-    \caption{Registro da submissão do arquivo \texttt{submission.csv} no Kaggle.}
+    \includegraphics[width=0.67\textwidth]{images/kaggle_submission.png}
+    \caption{Registro oficial da submissão no Kaggle, validando os escores público e privado alcançados.}
     \label{fig:kaggle-submission}
 \end{figure}
 
-A melhor AUC de validação cruzada interna foi 0,7876, e a submissão pública ficou em 0,7828. A diferença é pequena e compatível com variação entre partições, mas também sugere que ganhos adicionais não viriam apenas de trocar XGBoost por LightGBM ou CatBoost: os três já ficaram praticamente empatados. O resultado no Kaggle deve ser lido em três níveis: a pontuação absoluta, a posição relativa no ranking e a distância até as soluções de topo.
-
+A interpretação desse resultado deve ser desdobrada sob três perspectivas de avaliação:
 \begin{itemize}
-    \item \textbf{Pontuação absoluta:} uma AUC pública de \textbf{0,7828} indica que o modelo ordena corretamente pares de clientes inadimplentes/não inadimplentes com boa qualidade. Em crédito, isso já é útil para priorização de risco, triagem e definição de faixas de revisão manual.
-    \item \textbf{Posição relativa:} a colocação aproximada \textbf{3000/8000} coloca a solução em torno do \textbf{top 37--38\%} do \textit{leaderboard}. Portanto, o resultado é sólido e acima da mediana, mas ainda distante de uma solução de competição de ponta.
-    \item \textbf{Melhores soluções:} as equipes vencedoras atingiram AUC privada de $\sim$\textbf{0,805}, e a fronteira do \textit{top-1\%} ficou em torno de 0,800--0,802. Comparando de forma arredondada, o topo ficou em \textbf{0,80} e nossa submissão ficou em \textbf{0,78}.
-    \item \textbf{Distância até o topo:} a diferença de aproximadamente \textbf{0,02 AUC} é pequena em escala absoluta, mas grande em uma competição madura. Nessa faixa, ganhos de 0,005 já são difíceis; ganhos de 0,02 geralmente exigem uma mudança substancial na representação dos dados.
+    \item \textbf{Eficácia Absoluta:} Uma AUC de $\sim$0,78 atesta que o modelo ordena com consistência o risco de clientes inadimplentes frente aos bons pagadores, entregando utilidade real para processos bancários de triagem e priorização de revisão manual.
+    \item \textbf{Eficácia Relativa:} A colocação na metade superior da tabela confirma a solidez da metodologia, porém revela uma distância para a fronteira de ponta da competição. As equipes vencedoras registraram AUC privada na casa de $\sim$\textbf{0,805}, com a nota de corte do \textit{top-1\%} girando em torno de 0,800.
+    \item \textbf{Diagnóstico do Gap:} A diferença de \textbf{$\sim$0,02 AUC} em relação aos líderes representa um abismo estatístico em um problema altamente saturado. Em competições maduras, saltos dessa magnitude raramente provêm de ajustes finos de hiperparâmetros ou de técnicas de \textit{ensembling} marginais.
 \end{itemize}
 
-Em suma, a distância até o topo é essencialmente uma distância de \textbf{profundidade de engenharia de atributos}. Os modelos usados provavelmente não foram o gargalo principal: XGBoost, LightGBM e CatBoost ficaram quase empatados e pertencem às mesmas famílias de métodos usadas pelas melhores soluções públicas. O que separa uma solução 0,78 de uma solução 0,80 no Home Credit tende a ser a representação do histórico do cliente: janelas temporais, recência de inadimplência, comportamento por tipo de crédito, proporções entre dívida e limite, estabilidade de renda, padrões de atraso e interações entre tabelas. O \textit{ensembling} ainda poderia ajudar, mas sem atributos mais ricos ele tenderia a produzir ganhos marginais.
+Em suma, a distância para a liderança traduz uma assimetria na \textbf{profundidade da engenharia de atributos}. Como os modelos baseados em árvore (XGBoost, LightGBM e CatBoost) empataram tecnicamente no experimento --- sendo idênticos às arquiteturas utilizadas pelas equipes de ponta --- o gargalo metodológico não reside no algoritmo. A transição de uma solução $\sim$0,78 para $\sim$0,80 no \textit{Home Credit} exige representações mais sofisticadas da jornada financeira do indivíduo: mapeamento de janelas temporais, decaimento de risco (\textit{recência}), estabilidade de renda e mineração de subgrafos nos históricos de pagamentos e rejeições anteriores.
 
 \section{Limitações e Oportunidades de Melhoria}
-Reconhecemos limitações claras que apontam caminhos de aprimoramento:
+A análise crítica do projeto revela gargalos estruturais e metodológicos que definem a fronteira de expansão para trabalhos futuros:
 
 \begin{itemize}
-    \item \textbf{Engenharia de atributos ainda conservadora.} Este é o principal gargalo. Usamos agregações estatísticas simples (média, mínimo, máximo e soma), mas não exploramos suficientemente recência, tendência temporal, contagens por status, razões entre tabelas e janelas móveis. Esse tipo de atributo é exatamente o que costuma separar soluções medianas de soluções de topo no Home Credit.
-    \item \textbf{\textit{Blend} simples \textit{vs.} \textit{stacking}.} A média ponderada, embora robusta, deixa desempenho sobre a mesa. Um meta-modelo treinado sobre as previsões OOF capturaria melhor a complementaridade entre modelos.
-    \item \textbf{Rede neural subaproveitada.} O desempenho fraco da MLP (0,625) sugere que arquiteturas específicas para dados tabulares (TabNet, FT-Transformer) ou \textit{embeddings} de categóricas poderiam elevar sua contribuição ao \textit{ensemble}.
-    \item \textbf{Ausência de \textit{tuning} sistemático.} Os hiperparâmetros foram fixados por valores razoáveis de literatura, sem busca bayesiana --- uma otimização com Optuna sobre cada \textit{booster} tende a render 0,003--0,005 de AUC adicional.
-    \item \textbf{Explicabilidade local ainda limitada.} O relatório apresenta interpretação global, mas uma aplicação real de crédito exigiria explicações por cliente com SHAP local, LIME, análise contrafactual e gráficos PDP/ICE para atributos-chave. Isso ajudaria a transformar o escore em justificativas auditáveis.
-    \item \textbf{Calibração e viés.} Como discutido, as probabilidades não são calibradas e o modelo usa um atributo protegido (gênero); ambos exigiriam tratamento antes de qualquer uso em produção. Além de remover ou controlar atributos sensíveis, seria necessário auditar AUC, taxa de falsos positivos e taxa de falsos negativos por subgrupo.
+    \item \textbf{Engenharia de Atributos Conservadora:} Consiste no principal limitador de desempenho do modelo. A adoção de agregações estatísticas primárias (média, soma, mínimo e máximo) negligenciou dinâmicas financeiras fundamentais, como recência de atrasos, tendências temporais, contagens condicionais de status e janelas móveis --- fatores algorítmicos que classicamente distinguem as soluções de topo neste domínio.
+    \item \textbf{Otimização e \textit{Stacking}:} A média ponderada (\textit{blend}), embora resiliente, subutiliza a complementaridade residual dos classificadores. A implementação de um meta-modelo treinado sobre as predições OOF (\textit{Stacking}), aliada à exploração bayesiana sistemática de hiperparâmetros (via \texttt{Optuna}), extrairia o teto de performance de cada \textit{booster} base.
+    \item \textbf{Representação em \textit{Deep Learning}:} A performance deprimida da rede MLP evidencia a limitação de topologias genéricas em domínios tabulares esparsos. O uso de arquiteturas dedicadas (como \textit{TabNet} ou \textit{FT-Transformer}) e o mapeamento de variáveis categóricas via \textit{embeddings} densos tornaria a rede um componente mais competitivo no \textit{ensemble}.
+    \item \textbf{Explicabilidade Local e Calibração:} O estudo focou na interpretação global (\textit{feature importance}). A transposição para o negócio exigiria explicabilidade em nível de instância (\textit{e.g.}, SHAP \textit{waterfall}, análise contrafactual) para gerar justificativas auditáveis cliente a cliente, além de métodos de calibração probabilística absoluta (Isotônica/Platt) para corrigir as distorções inseridas pelo rebalanceamento de classes.
+    \item \textbf{Governança e Mitigação de Viés:} A relevância estatística do atributo protegido \texttt{CODE\_GENDER} sinaliza desafios éticos e regulatórios prementes. Em um cenário de produção real, seria imperativa a remoção de características protegidas e a condução de uma auditoria de paridade algorítmica rigorosa (avaliando disparidades em AUC, taxas de falsos positivos e falsos negativos entre subgrupos).
 \end{itemize}
 
 \section{Conclusão}
-Este trabalho desenvolveu uma solução completa e criticamente analisada para o desafio \textit{Home Credit Default Risk}. A partir de sete tabelas relacionais, construímos um pipeline de engenharia de atributos que expandiu o espaço de $\sim$120 para $\sim$350 variáveis, e comparamos seis modelos-base sob validação cruzada estratificada rigorosa. O melhor modelo individual foi o XGBoost, com \textbf{AUC OOF de 0,7876}; o \textit{ensemble} ponderado de \textit{gradient boosters}, floresta aleatória e rede neural atingiu \textbf{AUC OOF de 0,7865} e a melhor \textit{Average Precision} (0,2832). No Kaggle, o arquivo final \texttt{submission.csv} obteve \textbf{Score 0,78173}, \textbf{Public score 0,7828} e posição aproximada \textbf{3000/8000}.
+Este trabalho consolidou uma abordagem estruturada e uma análise crítica profunda para o desafio \textit{Home Credit Default Risk}, a partir de um ecossistema relacional de sete tabelas, foi desenvolvida uma pipeline de engenharia de características que expandiu a dimensionalidade preditiva de $\sim$120 para $\sim$350 variáveis. A avaliação rigorosa de seis modelos-base sob validação cruzada estratificada revelou o XGBoost como o estimador isolado mais forte (\textbf{AUC OOF de 0,7876}), enquanto o \textit{ensemble} alcançou a melhor métrica de \textit{Average Precision} (\textbf{0,2832}), fundamental em cenários desbalanceados. A submissão oficial (\texttt{submission.csv}) registrou \textbf{Score Privado de 0,78173} e \textbf{Score Público de 0,7828}, garantindo presença no \textbf{top 38\%} global ($\sim$3.000/8.000 participantes).
 
-Mais importante que a pontuação, a análise revelou uma narrativa coerente: o risco de crédito neste conjunto é governado sobretudo por escores externos pré-existentes e suas interações, complementados por idade/emprego, razões de crédito, disciplina histórica de pagamento e escolaridade. Essas conclusões foram validadas de forma convergente por SHAP global, importância entre modelos, permutação, distribuição de escores, análise por decis e estudo de limiar. A explicabilidade também mostrou o limite da solução: ainda entendemos bem os grupos de atributos que movem o escore, mas faltam explicações locais e contrafactuais para justificar decisões cliente a cliente.
+Para além do desempenho no \textit{leaderboard}, o estudo extraiu uma interpretação de negócios empiricamente validada: o risco de inadimplência neste domínio é governado substancialmente por escores externos pré-existentes e suas interações, fortemente modulados por relações demográficas (idade/emprego), histórico de pagamentos e razões de crédito. Essa narrativa foi corroborada pela convergência analítica entre a decomposição SHAP global, importância por permutação e análise operacional por decis. Contudo, o limite atual da solução reside na explicabilidade: possuímos um mapa global claro das decisões, mas careceu-se de ferramentas de inferência local e contrafactual para fundamentar recusas de crédito cliente a cliente.
 
-O resultado no \textit{leaderboard} reforça essa leitura. Nossa submissão ficou em torno de \textbf{0,78 AUC}, enquanto o topo ficou em torno de \textbf{0,80 AUC}; a diferença de aproximadamente \textbf{0,02 AUC} não aponta para ausência de um modelo moderno, pois usamos as mesmas famílias fortes de \textit{gradient boosting} que dominam dados tabulares. Ela aponta para uma representação ainda incompleta do histórico financeiro. O caminho mais promissor para evoluir a solução seria aprofundar a engenharia de atributos: recência, tendências temporais, agregações condicionais por status, razões entre saldos, pagamentos e limites, interações entre tabelas e validação cuidadosa contra vazamento. Em outras palavras, o principal aprendizado do projeto é que, neste problema, explicar e melhorar o modelo passa menos por trocar algoritmos e mais por construir melhores descrições do comportamento financeiro do cliente.
+A distância de aproximadamente \textbf{0,02 ponto de AUC} para as soluções que lideram a competição ($\sim$0,80 AUC) reforça o principal aprendizado do projeto: o hiato não é de natureza algorítmica, uma vez que operamos com as mesmas famílias de \textit{gradient boosting} (XGBoost, LightGBM, CatBoost) adotadas pela elite do Kaggle, mas sim representacional. O aprimoramento dessa solução e a redução do risco sistêmico exigem transcender agregações conservadoras, migrando para uma engenharia de atributos focada em recência temporal, decaimento de risco de atrasos e agregações transacionais condicionais. Conclui-se que, em modelagem de crédito, elevar o patamar de predição é uma tarefa inerentemente dependente da construção de descrições mais ricas e precisas do comportamento financeiro longitudinal do cliente.
 
 \end{document}
